@@ -1,7 +1,7 @@
 import styles from "./app.module.css"
 import {A, Route, Router} from "@solidjs/router";
 import "virtual:uno.css"
-import "./style/theme/linsAlpha/theme.scss"
+import "./style/theme/glass/theme.scss"
 import ExportConfig from "~/app/ImportConfig/ExportConfig"
 import ThemeEditor from "~/app/ThemeEditor/ThemeEditor"
 import Home from "~/app/Home/Home"
