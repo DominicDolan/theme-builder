@@ -1,55 +1,50 @@
 import {createStore} from "solid-js/store"
 import {Model} from "~/packages/repository/Model"
 import {ModelEvent, ModelEventOptionalId} from "~/packages/repository/ModelEvent"
-import {EventListener} from "~/packages/utils/EventListener"
+import {createEvent, createKeyedEvent, EventListener, KeyedEventListener} from "~/packages/utils/EventListener"
 
 export type EventStore<M extends Model> = readonly [
     (modelId: string, ...events: Array<ModelEventOptionalId<M>>) => Array<ModelEvent<M>>,
     {
         getStreamById(id: string): ModelEvent<M>[] | undefined,
-        onEventPush(callback: (events: ModelEvent<M>) => void): void,
-        onCreateEventPush(callback: (events: ModelEvent<M>[]) => void): void,
-        onUpdateEventPush(callback: (events: ModelEvent<M>[]) => void): void,
-        onUpdateEventPushById(modelId: string, callback: (events: ModelEvent<M>[]) => void): void,
+        onAnyEventPush: EventListener<[ModelEvent<M>[]], void>[0]
+        onAnyEventPushById: KeyedEventListener<[ModelEvent<M>[]], void>[0]
+        onCreateEventPush: EventListener<[ModelEvent<M>[]], void>[0]
+        onCreateEventPushById: KeyedEventListener<[ModelEvent<M>[]], void>[0]
+        onUpdateEventPush: EventListener<[ModelEvent<M>[]], void>[0]
+        onUpdateEventPushById: KeyedEventListener<[ModelEvent<M>[]], void>[0]
     }
 ]
 
 export function createEventStore<M extends Model>(): EventStore<M> {
-    const listener = new EventListener()
+    // const listener = new EventListener()
 
     const [eventStreams, setEventStream] = createStore<Record<string, ModelEvent<M>[]>>({})
+
+    const [onAnyEventPush, triggerAnyEventPush] = createEvent<[ModelEvent<M>[]]>()
+    const [onAnyEventPushById, triggerAnyEventPushById] = createKeyedEvent<[ModelEvent<M>[]]>()
+    const [onUpdateEventPush, triggerUpdateEventPush] = createEvent<[ModelEvent<M>[]]>()
+    const [onUpdateEventPushById, triggerUpdateEventPushById] = createKeyedEvent<[ModelEvent<M>[]]>()
+    const [onCreateEventPush, triggerCreateEventPush] = createEvent<[ModelEvent<M>[]]>()
+    const [onCreateEventPushById, triggerCreateEventPushById] = createKeyedEvent<[ModelEvent<M>[]]>()
 
     function pushEvent(modelId: string, ...events: Array<ModelEventOptionalId<M>>): Array<ModelEvent<M>> {
         const stream = eventStreams[modelId] as ModelEvent<M>[] | null
         const eventsWithId: ModelEvent<M>[] = events.map(e => ({...e, modelId} as ModelEvent<M>))
         if (stream == null) {
             setEventStream(modelId, eventsWithId)
-            listener.trigger("create-event-pushed", eventsWithId)
+            triggerCreateEventPush(eventsWithId)
+            triggerCreateEventPushById(modelId, eventsWithId)
         } else {
             for (const event of eventsWithId) {
                 setEventStream(modelId, stream.length ?? 0, event)
             }
-            listener.trigger("update-event-pushed", eventsWithId)
-            listener.trigger(`update-event-pushed-${modelId}`, eventsWithId)
+            triggerUpdateEventPush(eventsWithId)
+            triggerUpdateEventPushById(modelId, eventsWithId)
         }
-        listener.trigger("events-pushed", eventsWithId)
+        triggerAnyEventPush(eventsWithId)
+        triggerAnyEventPushById(modelId, eventsWithId)
         return eventsWithId
-    }
-
-    function onEventPush(callback: (events: ModelEvent<M>) => void) {
-        listener.on("events-pushed", callback)
-    }
-
-    function onCreateEventPush(callback: (events: ModelEvent<M>[]) => void) {
-        listener.on("create-event-pushed", callback)
-    }
-
-    function onUpdateEventPush(callback: (events: ModelEvent<M>[]) => void) {
-        listener.on("update-event-pushed", callback)
-    }
-
-    function onUpdateEventPushById(modelId: string, callback: (events: ModelEvent<M>[]) => void) {
-        listener.on(`update-event-pushed-${modelId}`, callback)
     }
 
     return [
@@ -58,8 +53,10 @@ export function createEventStore<M extends Model>(): EventStore<M> {
             getStreamById(id: string): ModelEvent<M>[] | undefined {
                 return eventStreams[id]
             },
-            onEventPush,
+            onAnyEventPush,
+            onAnyEventPushById,
             onCreateEventPush,
+            onCreateEventPushById,
             onUpdateEventPush,
             onUpdateEventPushById,
         }

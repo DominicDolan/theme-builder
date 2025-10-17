@@ -1,55 +1,113 @@
-import {createId} from "@paralleldrive/cuid2"
 
-export interface EventListenerInterface {
-    on: (listener: string, fn: Function) => string
-    trigger: ((listener: string, ...params: Array<any>) => any) & Record<string, (params?: any) => void>
-    clear: () => void
-    clearEvent: (eventId: string) => void
+export type OnEventOptions = {
+    once: boolean
 }
 
-export class EventListener implements EventListenerInterface {
-    on: (listener: string, fn: Function) => string
-    trigger: ((listener: string, ...params: Array<any>) => any) & Record<string, (params?: any) => void>
+export type EventCallbacks<P extends Array<unknown>, R> = {
+    id: symbol
+    callback: (...params: P) => R,
+    options: OnEventOptions,
     clear: () => void
-    clearEvent: (eventId: string) => void
+}
 
-    constructor() {
-        const listeners: Record<string, Array<[id: string, fn: Function]>> = {}
-        this.on = function (listener: string, fn: Function) {
-            if (listeners[listener] == null) {
-                listeners[listener] = []
-            }
+export type EventListener<P extends Array<unknown>, R = void> = [
+    onEvent: (callback: EventCallbacks<P, R>["callback"], options?: Partial<OnEventOptions>) => () => void,
+    triggerEvent: (...params: P) => void
+]
 
-            const eventId = createId()
-            listeners[listener].push([eventId, fn])
-            this.trigger[listener] = (...params: any) => {
-                listeners[listener].forEach(([id, fn]) => fn(...params))
-            }
+export function createEvent<P extends Array<unknown>, R = void>(): EventListener<P, R> {
+    const callbacks: Array<EventCallbacks<P, R>> = []
 
-            return eventId
-        }
-
-        this.trigger = function(listener: string, ...params: Array<any>): any {
-            if (listeners[listener] != null) {
-                listeners[listener].forEach(([id, fn]) => fn(...params))
-            }
-        } as ((listener: string, ...params: Array<any>) => any) & Record<string, (...params: Array<any>) => void>
-
-        this.clear = function () {
-            for (const key in listeners){
-                listeners[key].splice(0, listeners[key].length)
+    function onEvent(callback: EventCallbacks<P, R>["callback"], options?: Partial<OnEventOptions>) {
+        const id = Symbol()
+        function clear() {
+            const index = callbacks.findIndex(c => c.id === id)
+            if (index !== -1){
+                callbacks.splice(index, 1);
             }
         }
 
-        this.clearEvent = function(eventId: string) {
-            const eventNames = Object.keys(listeners)
+        callbacks.push({
+            id,
+            callback,
+            options: eventOptionsWithDefaults(options),
+            clear
+        })
 
-            for (const eventName of eventNames) {
-                if (listeners[eventName] != null && listeners[eventName].find(([id]) => id === eventId)) {
-                    listeners[eventName] = listeners[eventName].filter(([id]) => id !== eventId)
-                }
+        return clear
+    }
+
+    function triggerEvent(...params: P) {
+        for (const { callback, options, clear } of callbacks) {
+            callback(...params)
+            if (options.once) {
+                clear();
             }
         }
     }
 
+    return [
+        onEvent,
+        triggerEvent
+    ]
+}
+
+export type KeyedEventListener<P extends Array<unknown>, R> = [
+    onEvent: (key: string | symbol, callback: EventCallbacks<P, R>["callback"], options?: Partial<OnEventOptions>) => void,
+    triggerEvent: (key: string | symbol, ...params: P) => void
+]
+
+export function createKeyedEvent<P extends Array<unknown>, R = void>(): KeyedEventListener<P, R> {
+    const callbacks: Record<string | symbol, Array<EventCallbacks<P, R>>> = {}
+
+    function onEvent(key: string | symbol, callback: EventCallbacks<P, R>["callback"], options?: Partial<OnEventOptions>) {
+        if (callbacks[key] == undefined) {
+            callbacks[key] = []
+        }
+        const id = Symbol()
+        function clear() {
+            const index = callbacks[key].findIndex(c => c.id === id)
+            if (index !== -1){
+                callbacks[key].splice(index, 1);
+            }
+        }
+
+        callbacks[key].push({
+            id,
+            callback,
+            options: eventOptionsWithDefaults(options),
+            clear
+        })
+
+        return clear
+    }
+
+    function triggerEvent(key: string | symbol, ...params: P) {
+        if (callbacks[key] == undefined) {
+            return
+        }
+
+        for (const { callback, options, clear } of callbacks[key]) {
+            callback(...params)
+            if (options.once) {
+                clear();
+            }
+        }
+    }
+
+    return [
+        onEvent,
+        triggerEvent
+    ]
+}
+
+function eventOptionsWithDefaults(options?: Partial<OnEventOptions>) {
+    const defaults: OnEventOptions = {
+        once: false
+    }
+
+    return {
+        ...defaults,
+        ...options,
+    }
 }

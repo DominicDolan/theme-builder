@@ -5,8 +5,6 @@ import "./style/theme/glass/theme.scss"
 import ExportConfig from "~/app/ImportConfig/ExportConfig"
 import ThemeEditor from "~/app/ThemeEditor/ThemeEditor"
 import Home from "~/app/Home/Home"
-import {Suspense} from "solid-js"
-import {FileRoutes} from "@solidjs/start/router"
 
 export default function App() {
     return (
@@ -45,16 +43,15 @@ export default function App() {
                           grid-col={"start-1"}
                           sizing={"h-full min-w-200 max-w-400 w-70%"}
                           spacing={"pa-8 pt-16 ma-auto"} >
-                        <Suspense>{props.children}</Suspense>
+                        {props.children}
                     </main>
                 </div>
 
             )}
         >
-            {/*<Route path={"/"} component={Home} info={{title: "Home", filesystem: true}}/>*/}
-            {/*<Route path={"/import"} component={ImportConfig} info={{title: "Import", filesystem: true}}/>*/}
-            {/*<Route path={"/editor"} component={ThemeEditor} info={{title: "Editor", filesystem: true}}/>*/}
-            <FileRoutes/>
+            <Route path={"/"} component={Home} info={{title: "Home", filesystem: true}}/>
+            <Route path={"/export"} component={ExportConfig} info={{title: "Import"}}/>
+            <Route path={"/editor"} component={ThemeEditor} info={{title: "Editor"}}/>
         </Router>
     )
 }

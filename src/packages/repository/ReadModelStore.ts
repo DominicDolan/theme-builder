@@ -1,24 +1,44 @@
 import {Model, PartialModel} from "~/packages/repository/Model"
-import {Accessor, createMemo} from "solid-js"
+import {Accessor} from "solid-js"
 import {EventStore} from "~/packages/repository/EventStore"
-import {EventListener} from "~/packages/utils/EventListener"
-import {createStore} from "solid-js/store"
+import {createStore, produce} from "solid-js/store"
 import {reconcileEvents, reconcileEventsAfter} from "~/packages/repository/EventReconciler"
+import {createEvent, EventListener} from "~/packages/utils/EventListener"
 
 
 export type ReadModelStore<M extends Model> = [
     Accessor<M[]>,
     {
         getModelById(id: string): M | undefined,
-        onModelCreate(callback: (model: PartialModel<M>) => void): void,
-        onModelUpdate(callback: (model: PartialModel<M>) => void): void
+        onModelCreate: EventListener<[PartialModel<M>]>[0]
+        onModelUpdate: EventListener<[PartialModel<M>]>[0]
+        populate(values: M[]): void
     }
 ]
 
 export function useReadModelStore<M extends Model>(eventStore: EventStore<M>): ReadModelStore<M> {
-    const listener = new EventListener()
     const [_, { getStreamById, onCreateEventPush, onUpdateEventPushById }] = eventStore
     const [modelsById, setModels] = createStore<Record<string, M>>({})
+
+    const [onModelUpdate, triggerModelUpdate] = createEvent<[PartialModel<M>]>()
+    const [onModelCreate, triggerModelCreate] = createEvent<[PartialModel<M>]>()
+
+    function clearAll() {
+        setModels(produce((models) => {
+            for (const key in models) {
+                delete models[key]
+            }
+        }))
+    }
+
+    function populate(values: M[]) {
+        const contents = values.reduce((acc, v) => {
+            acc[v.id] = v
+            return acc
+        }, {} as Record<string, M>)
+        clearAll()
+        setModels(contents)
+    }
 
     onCreateEventPush((events) => {
         const modelFromEvents = reconcileEvents(events)
@@ -27,7 +47,8 @@ export function useReadModelStore<M extends Model>(eventStore: EventStore<M>): R
         const modelId = events[0].modelId
         setModels(modelFromEvents.id, modelFromEvents as M)
         const [model, setModel] = createStore<M>(modelsById[modelId])
-        listener.trigger("model-created", modelFromEvents)
+        triggerModelUpdate(model)
+        triggerModelCreate(model)
 
         onUpdateEventPushById(modelId, () => {
             const stream = getStreamById(modelId)
@@ -42,23 +63,14 @@ export function useReadModelStore<M extends Model>(eventStore: EventStore<M>): R
                 }
                 setModel(key as any, newUpdates[key as keyof PartialModel<M>])
             }
-            listener.trigger("model-updated", model)
+            triggerModelUpdate(model)
         })
     })
 
-    const modelsList = createMemo(() => {
+    const modelsList = () => {
         const ids = Object.keys(modelsById)
 
         return ids.map(id => modelsById[id])
-    })
-
-
-    function onModelUpdate(callback: (model: PartialModel<M>) => void) {
-        listener.on("model-updated", callback)
-    }
-
-    function onModelCreate(callback: (model: PartialModel<M>) => void) {
-        listener.on("model-created", callback)
     }
 
     return [
@@ -69,6 +81,7 @@ export function useReadModelStore<M extends Model>(eventStore: EventStore<M>): R
             },
             onModelUpdate,
             onModelCreate,
+            populate
         }
     ]
 }

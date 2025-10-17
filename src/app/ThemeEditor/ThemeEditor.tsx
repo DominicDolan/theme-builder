@@ -1,6 +1,9 @@
 import ColorItem from "~/app/ThemeEditor/ColorItem"
 import {
-    For,
+    batch,
+    createEffect,
+    createResource,
+    For, on,
     Suspense
 } from "solid-js"
 import {action, query, revalidate, useAction} from "@solidjs/router"
@@ -10,17 +13,50 @@ import {ModelEvent} from "~/packages/repository/ModelEvent"
 import {useReadModelStore} from "~/packages/repository/ReadModelStore"
 import {sanitize, SanitizedZodResult} from "~/packages/utils/ZodSanitize"
 import {ColorDefinition, ColorDefinitionEvent, colorDefinitionSchema} from "~/app/ThemeEditor/ColorDefinition"
+import {createStore, reconcile} from "solid-js/store"
 
 
-const colorQuery = query(async () => {
-    return await fetch("/api/colors").then((res) => res.json())
-}, "get-colors")
 
 const eventStore = createEventStore<ColorDefinition>()
 const [pushColorDefinitionEvent] = eventStore
 
 const readModelStore = useReadModelStore(eventStore)
-const [colorDefinitions, { onModelUpdate }] = readModelStore
+const [colorDefinitions, { onModelUpdate, populate }] = readModelStore
+
+const dbData = [
+    {
+        hex: "#123456",
+        alpha: 0.5,
+        name: "--test-name",
+        id: createId(),
+        updatedAt: Date.now()
+    }
+]
+
+const db = {
+    async getColorReadModels() {
+        await new Promise(r => setTimeout(r, 50))
+        return dbData
+    },
+    async getLastUpdatedReadModel() {
+        return dbData.at(-1)?.updatedAt
+    }
+}
+const firstId = createId()
+const colorQuery = query(async () => {
+    "use server"
+    populate([
+        {
+            hex: "#123456",
+            alpha: 0.5,
+            name: "--test-name",
+            id: firstId,
+            updatedAt: Date.now()
+        }
+    ])
+
+    return colorDefinitions()
+}, "get-colors")
 
 export const updateColors = action(async (event: ModelEvent<ColorDefinition>) => {
     "use server"
@@ -32,18 +68,33 @@ export const updateColors = action(async (event: ModelEvent<ColorDefinition>) =>
             } catch (e) {
                 reject(e)
             }
-        })
+        }, { once: true })
         pushColorDefinitionEvent(event.modelId, event)
     })
 })
 
 export default function ThemeEditor() {
 
+    const [colors, { refetch }] = createResource(() => colorQuery())
     const save = useAction(updateColors)
 
+    const [colorListStore, setColorListStore] = createStore<ColorDefinition[]>([])
+
+    createEffect(on(colors, (value) => {
+        if (value == undefined) {
+            return
+        }
+        setColorListStore(reconcile(value))
+    }))
     async function onDefinitionUpdated(e: ColorDefinitionEvent) {
-        pushColorDefinitionEvent(e.modelId, e)
-        await save(e)
+        await batch(async () => {
+            pushColorDefinitionEvent(e.modelId, e)
+
+            await save(e)
+            setTimeout(() => {
+            }, 0)
+            await refetch()
+        })
     }
 
     async function addColorLocal() {
@@ -56,18 +107,16 @@ export default function ThemeEditor() {
         await save(createEvent[0])
     }
 
-
     return <div>
         <h2>Theme Editor</h2>
         <div flex={"col gap-4"}>
             <Suspense fallback={<div>Loading...</div>}>
-                <For each={colorDefinitions()}>
+                <div>Colors JSON: {JSON.stringify(colorListStore)}</div>
+                <For each={colorListStore}>
                     {(def) => <ColorItem definition={def} onDefinitionUpdated={onDefinitionUpdated}/>}
                 </For>
             </Suspense>
             <button onClick={() => addColorLocal()}>Add</button>
-            {/*<button onClick={() => saveEvents()}>Save</button>*/}
-            {/*<button onClick={() => refetch()}>Refetch</button>*/}
             <button onClick={() => revalidate(colorQuery.key)}>Revalidate</button>
         </div>
     </div>
