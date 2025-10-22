@@ -1,14 +1,14 @@
 import fs from "node:fs"
 import {
-    reconcileGroupedEventsToArray
-} from "~/packages/repository/EventReconciler"
-import {ColorDefinitionEvent} from "~/app/ThemeEditor/ColorDefinition"
+    reduceGroupedDeltasToArray
+} from "~/packages/repository/EventReducer"
+import {ColorDelta} from "~/app/ThemeEditor/ColorDefinition"
 
 
 export function useThemeEditorStore() {
 
     async function getEvents() {
-        return await new Promise<Record<string, ColorDefinitionEvent[]>>((resolve, reject) => {
+        return await new Promise<Record<string, ColorDelta[]>>((resolve, reject) => {
             fs.readFile("data/colors-events.json", (e, data) => {
                 if (e) {
                     resolve({})
@@ -26,15 +26,15 @@ export function useThemeEditorStore() {
         const colorsEvents = await getEvents()
 
         return new Promise((resolve) => {
-            const models = reconcileGroupedEventsToArray(colorsEvents)
+            const models = reduceGroupedDeltasToArray(colorsEvents)
             setTimeout(() => {
                 resolve(models)
             }, 1000)
         })
     }
 
-    async function updateDefinition(map: Record<string, ColorDefinitionEvent>) {
-        const colorsEvents = await new Promise<Record<string, ColorDefinitionEvent[]>>((resolve, reject) => {
+    async function updateDefinition(map: Record<string, ColorDelta>) {
+        const colorsEvents = await new Promise<Record<string, ColorDelta[]>>((resolve, reject) => {
             fs.readFile("data/colors-events.json", (e, data) => {
                 if (e) {
                     resolve({})

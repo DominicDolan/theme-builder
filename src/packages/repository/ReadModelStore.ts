@@ -1,13 +1,12 @@
 import {Model, PartialModel} from "~/packages/repository/Model"
-import {Accessor} from "solid-js"
-import {EventStore} from "~/packages/repository/EventStore"
-import {createStore, produce} from "solid-js/store"
-import {reconcileEvents, reconcileEventsAfter} from "~/packages/repository/EventReconciler"
+import {DeltaStore} from "~/packages/repository/DeltaStore"
+import {createStore, produce, reconcile} from "solid-js/store"
+import {reduceDeltas, reduceDeltasAfter} from "~/packages/repository/EventReducer"
 import {createEvent, EventListener} from "~/packages/utils/EventListener"
 
 
 export type ReadModelStore<M extends Model> = [
-    Accessor<M[]>,
+    modelsList: M[],
     {
         getModelById(id: string): M | undefined,
         onModelCreate: EventListener<[PartialModel<M>]>[0]
@@ -16,9 +15,10 @@ export type ReadModelStore<M extends Model> = [
     }
 ]
 
-export function useReadModelStore<M extends Model>(eventStore: EventStore<M>): ReadModelStore<M> {
-    const [_, { getStreamById, onCreateEventPush, onUpdateEventPushById }] = eventStore
+export function useReadModelStore<M extends Model>(eventStore: DeltaStore<M>): ReadModelStore<M> {
+    const [_, { getStreamById, onCreateDeltaPush, onUpdateDeltaPushById, onAnyDeltaPush }] = eventStore
     const [modelsById, setModels] = createStore<Record<string, M>>({})
+    const [modelsListStore, setModelListStore] = createStore<M[]>([])
 
     const [onModelUpdate, triggerModelUpdate] = createEvent<[PartialModel<M>]>()
     const [onModelCreate, triggerModelCreate] = createEvent<[PartialModel<M>]>()
@@ -38,23 +38,27 @@ export function useReadModelStore<M extends Model>(eventStore: EventStore<M>): R
         }, {} as Record<string, M>)
         clearAll()
         setModels(contents)
+
+        const ids = Object.keys(modelsById)
+
+        setModelListStore(ids.map(id => modelsById[id]))
     }
 
-    onCreateEventPush((events) => {
-        const modelFromEvents = reconcileEvents(events)
+    onCreateDeltaPush((events) => {
+        const modelFromEvents = reduceDeltas(events)
         if (modelFromEvents == null) return
 
         const modelId = events[0].modelId
         setModels(modelFromEvents.id, modelFromEvents as M)
         const [model, setModel] = createStore<M>(modelsById[modelId])
-        triggerModelUpdate(model)
         triggerModelCreate(model)
+        triggerModelUpdate(model)
 
-        onUpdateEventPushById(modelId, () => {
+        onUpdateDeltaPushById(modelId, () => {
             const stream = getStreamById(modelId)
             if (stream == undefined) return
 
-            const newUpdates = reconcileEventsAfter(stream, model.updatedAt)
+            const newUpdates = reduceDeltasAfter(stream, model.updatedAt)
             if (newUpdates == null) return
 
             for (const key in newUpdates) {
@@ -67,14 +71,18 @@ export function useReadModelStore<M extends Model>(eventStore: EventStore<M>): R
         })
     })
 
-    const modelsList = () => {
-        const ids = Object.keys(modelsById)
 
-        return ids.map(id => modelsById[id])
-    }
+    onModelUpdate((model) => {
+        const index = modelsListStore.findIndex(m => m.id === model.id)
+        if (index === -1) {
+            setModelListStore(modelsListStore.length, model as M)
+        } else {
+            setModelListStore(index, reconcile(model as M))
+        }
+    })
 
     return [
-        modelsList,
+        modelsListStore,
         {
             getModelById(id: string): M | undefined {
                 return modelsById[id]

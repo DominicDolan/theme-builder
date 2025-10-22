@@ -1,9 +1,9 @@
 import {useSubmission} from "@solidjs/router"
 import {updateColors} from "~/app/ThemeEditor/ThemeEditor"
 import {createMemo} from "solid-js"
-import {ColorDefinition, ColorDefinitionEvent} from "~/app/ThemeEditor/ColorDefinition"
+import {ColorDefinition, ColorDelta} from "~/app/ThemeEditor/ColorDefinition"
 
-export default function ColorItem(props: { definition: ColorDefinition, onDefinitionUpdated: (e: Omit<ColorDefinitionEvent, "eventId">) => void }) {
+export default function ColorItem(props: { definition: ColorDefinition, onDefinitionUpdated: (e: ColorDelta) => void }) {
 
     const saving = useSubmission(updateColors)
 
