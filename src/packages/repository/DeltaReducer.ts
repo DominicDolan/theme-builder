@@ -5,11 +5,11 @@ import {Model, PartialModel} from "~/packages/repository/Model"
 export function reduceMixedDeltas<M extends Model>(deltas: ModelDelta<M>[]): Record<string, Partial<M>> {
     const ids = new Set(deltas.map(e => e.modelId))
     function reduceById(id: string): Partial<M> {
-        const eventsById = deltas
+        const deltasById = deltas
             .filter(e => e.modelId === id)
             .toSorted((a, b) => a.timestamp - b.timestamp)
 
-        return eventsById.reduce((acc: Partial<M>, v) => {
+        return deltasById.reduce((acc: Partial<M>, v) => {
             return {
                 ...acc,
                 ...v

@@ -1,11 +1,11 @@
 
-type DebounceOptions = {
+export type DebounceOptions = {
     leading?: boolean;
     trailing?: boolean;
     maxWait?: number;
 };
 
-type DebouncedFunction<T extends (...args: any[]) => any> = {
+export type DebouncedFunction<T extends (...args: any[]) => any> = {
     (...args: Parameters<T>): ReturnType<T> | undefined;
     cancel(): void;
     flush(): ReturnType<T> | undefined;

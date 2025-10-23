@@ -1,8 +1,9 @@
 import {Model, PartialModel} from "~/packages/repository/Model"
 import {DeltaStore} from "~/packages/repository/DeltaStore"
-import {createStore, produce, reconcile} from "solid-js/store"
-import {reduceDeltas, reduceDeltasAfter} from "~/packages/repository/EventReducer"
+import {createStore, produce, reconcile as reconcileSolid} from "solid-js/store"
+import {reduceDeltas, reduceDeltasAfter} from "~/packages/repository/DeltaReducer"
 import {createEvent, EventListener} from "~/packages/utils/EventListener"
+import {batch} from "solid-js"
 
 
 export type ReadModelStore<M extends Model> = [
@@ -12,8 +13,16 @@ export type ReadModelStore<M extends Model> = [
         onModelCreate: EventListener<[PartialModel<M>]>[0]
         onModelUpdate: EventListener<[PartialModel<M>]>[0]
         populate(values: M[]): void
+        reconcile(values: Record<string, M> | M[]): void
     }
 ]
+
+function readModelArrayToObject<M extends Model>(values: M[]) {
+    return values.reduce((acc, v) => {
+        acc[v.id] = {...v}
+        return acc
+    }, {} as Record<string, M>)
+}
 
 export function useReadModelStore<M extends Model>(eventStore: DeltaStore<M>): ReadModelStore<M> {
     const [_, { getStreamById, onCreateDeltaPush, onUpdateDeltaPushById, onAnyDeltaPush }] = eventStore
@@ -32,16 +41,45 @@ export function useReadModelStore<M extends Model>(eventStore: DeltaStore<M>): R
     }
 
     function populate(values: M[]) {
-        const contents = values.reduce((acc, v) => {
-            acc[v.id] = v
-            return acc
-        }, {} as Record<string, M>)
-        clearAll()
-        setModels(contents)
+        batch(() => {
+            const contents = values.reduce((acc, v) => {
+                acc[v.id] = {...v}
+                return acc
+            }, {} as Record<string, M>)
+            clearAll()
+            setModels(contents)
 
-        const ids = Object.keys(modelsById)
+            const ids = Object.keys(modelsById)
 
-        setModelListStore(ids.map(id => modelsById[id]))
+            setModelListStore(ids.map(id => modelsById[id]))
+        })
+    }
+
+    function reconcile(values: Record<string, M> | M[]) {
+        batch(() => {
+            const isArray = Array.isArray(values)
+
+            function reconcileArray(values: M[]) {
+                for (const value of values) {
+                    const index = modelsListStore.findIndex(x => x.id === value.id)
+                    if (index != -1) {
+                        setModelListStore(index, reconcileSolid({...value}))
+                    } else {
+                        setModelListStore(modelsListStore.length, {...value})
+                    }
+                }
+            }
+
+            if (Array.isArray(values)) {
+                const valueObject = readModelArrayToObject(values)
+                setModels(reconcileSolid(valueObject))
+                reconcileArray(values)
+            } else {
+                setModels(values)
+                const valueList = isArray ? values : Object.keys(values).map(key => values[key])
+                reconcileArray(valueList)
+            }
+        })
     }
 
     onCreateDeltaPush((events) => {
@@ -77,7 +115,7 @@ export function useReadModelStore<M extends Model>(eventStore: DeltaStore<M>): R
         if (index === -1) {
             setModelListStore(modelsListStore.length, model as M)
         } else {
-            setModelListStore(index, reconcile(model as M))
+            setModelListStore(index, reconcileSolid(model as M))
         }
     })
 
@@ -89,7 +127,8 @@ export function useReadModelStore<M extends Model>(eventStore: DeltaStore<M>): R
             },
             onModelUpdate,
             onModelCreate,
-            populate
+            populate,
+            reconcile
         }
     ]
 }

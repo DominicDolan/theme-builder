@@ -1,7 +1,7 @@
 import fs from "node:fs"
 import {
     reduceGroupedDeltasToArray
-} from "~/packages/repository/EventReducer"
+} from "~/packages/repository/DeltaReducer"
 import {ColorDelta} from "~/app/ThemeEditor/ColorDefinition"
 
 
