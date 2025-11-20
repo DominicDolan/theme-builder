@@ -1,115 +1,27 @@
 import ColorItem from "~/app/ThemeEditor/ColorItem"
 import {
     createEffect,
-    createResource,
     For, on,
     Suspense
 } from "solid-js"
-import {action, query, revalidate, useAction} from "@solidjs/router"
+import {action, createAsync, query, revalidate, useAction} from "@solidjs/router"
 import {createId} from "@paralleldrive/cuid2"
 import {createEventStore} from "~/packages/repository/DeltaStore"
 import {ModelDelta} from "~/packages/repository/ModelDelta"
 import {useReadModelStore} from "~/packages/repository/ReadModelStore"
 import {sanitize, SanitizedZodResult} from "~/packages/utils/ZodSanitize"
 import {ColorDefinition, ColorDelta, colorDefinitionSchema} from "~/app/ThemeEditor/ColorDefinition"
-import fs from "node:fs"
 import {keyedDebounce} from "~/packages/utils/KeyedDebounce"
 import {mergeDeltasAfter} from "~/packages/repository/DeltaMerger"
+import useColorDatabase from "~/data/ColorModelsData"
+
+const db = useColorDatabase("data")
 
 const eventStore = createEventStore<ColorDefinition>()
 const [pushColorDefinitionEvent, { onAnyDeltaPush, getStreamById }] = eventStore
 
 const readModelStore = useReadModelStore(eventStore)
 const [colorDefinitions, { onModelUpdate, populate, reconcile }] = readModelStore
-
-const dbData = [
-    {
-        hex: "#123456",
-        alpha: 0.5,
-        name: "--test-name",
-        id: createId(),
-        updatedAt: Date.now()
-    }
-]
-
-const db = {
-    async getColorReadModels() {
-        return await new Promise<Record<string, ColorDefinition>>((resolve, reject) => {
-            fs.readFile("data/colors-read-models.json", (e, data) => {
-                if (e) {
-                    resolve({})
-                } else {
-                    try {
-                        resolve(JSON.parse(data.toString()))
-                    } catch {
-                        resolve({})
-                    }
-                }
-            })
-        })
-    },
-    async getLastUpdatedReadModel() {
-        return dbData.at(-1)?.updatedAt
-    },
-    async saveColorDelta(color: ModelDelta<ColorDefinition>) {
-        const colorsDeltas = await new Promise<Record<string, ColorDelta[]>>((resolve, reject) => {
-            fs.readFile("data/colors-events.json", (e, data) => {
-                if (e) {
-                    resolve({})
-                } else {
-                    try {
-                        resolve(JSON.parse(data.toString()))
-                    } catch {
-                        resolve({})
-                    }
-                }
-            })
-        })
-
-        if (colorsDeltas[color.modelId] == null) {
-            colorsDeltas[color.modelId] = []
-        }
-
-        colorsDeltas[color.modelId].push(color)
-
-        await new Promise<void>((resolve, reject) => {
-            fs.writeFile("data/colors-deltas.json", JSON.stringify(colorsDeltas), (e) => {
-                if (e) {
-                    reject(e)
-                } else {
-                    resolve()
-                }
-            })
-        })
-    },
-    async saveColorReadModel(color: ColorDefinition) {
-        const colors = await new Promise<Record<string, ColorDefinition>>((resolve, reject) => {
-            fs.readFile("data/colors-read-models.json", (e, data) => {
-                if (e) {
-                    resolve({})
-                } else {
-                    try {
-                        resolve(JSON.parse(data.toString()))
-                    } catch {
-                        resolve({})
-                    }
-                }
-            })
-        })
-
-        colors[color.id] = color
-
-        await new Promise<void>((resolve, reject) => {
-            fs.writeFile("data/colors-read-models.json", JSON.stringify(colors), (e) => {
-                if (e) {
-                    reject(e)
-                } else {
-                    resolve()
-                }
-            })
-        })
-    }
-}
 
 const colorQuery = query(async () => {
     "use server"
@@ -131,6 +43,8 @@ export const updateColors = action(async (delta: ModelDelta<ColorDefinition>) =>
                 if (result.success) {
                     await db.saveColorDelta(delta)
                     await db.saveColorReadModel(result.data)
+                } else {
+                    reject(result.error)
                 }
             } catch (e) {
                 reject(e)
@@ -143,7 +57,7 @@ export const updateColors = action(async (delta: ModelDelta<ColorDefinition>) =>
 
 export default function ThemeEditor() {
 
-    const [colors, { refetch }] = createResource(() => {
+    const colors = createAsync(() => {
         return colorQuery()
     })
     const saveAction = useAction(updateColors)
@@ -166,7 +80,6 @@ export default function ThemeEditor() {
         if (mergedDeltas == null) return
 
         await saveAction(mergedDeltas)
-        await refetch()
     }, 300)
 
     onAnyDeltaPush((deltas) => {
@@ -190,8 +103,13 @@ export default function ThemeEditor() {
     }
 
     return <div>
-        <h2>Theme Editor</h2>
+        <h2>TE</h2>
         <div flex={"col gap-4"}>
+            <Suspense fallback={"Loading Colors"}>
+                <div>
+                    Color Length: {colors()?.length?.toString() ?? "undefined"}
+                </div>
+            </Suspense>
             <Suspense fallback={<div>Loading...</div>}>
                 <For each={colorDefinitions}>
                     {(def) => <ColorItem definition={def} onDefinitionUpdated={onDefinitionUpdated}/>}

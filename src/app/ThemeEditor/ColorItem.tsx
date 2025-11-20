@@ -1,14 +1,23 @@
-import {useSubmission} from "@solidjs/router"
+import {useSubmission, useSubmissions} from "@solidjs/router"
 import {updateColors} from "~/app/ThemeEditor/ThemeEditor"
 import {createMemo} from "solid-js"
 import {ColorDefinition, ColorDelta} from "~/app/ThemeEditor/ColorDefinition"
 
 export default function ColorItem(props: { definition: ColorDefinition, onDefinitionUpdated: (e: ColorDelta) => void }) {
 
-    const saving = useSubmission(updateColors)
+    const submissions = useSubmissions(updateColors, ([input]) => {
+        return input.modelId === props.definition.id
+    })
 
     const issues = createMemo(() => {
-        const {data, error} = saving.result ?? {}
+        const submission = submissions[0]
+        if (submission == null) {
+            return []
+        }
+        const {data, error, success} = submission.result ?? {}
+        if (success) {
+            return []
+        }
         return error?.issues ?? []
     })
 
@@ -52,7 +61,7 @@ export default function ColorItem(props: { definition: ColorDefinition, onDefini
             <span>{getIssueByPath("alpha")?.message}</span>
         </div>
         <div class={"formField filled"} flex={"col gap-2"}>
-            <label>Variable Name: {props.definition.name}</label>
+            <label>Variable Name</label>
             <input value={props.definition.name} onInput={onNameChanged}/>
             <span sizing={"h-1ch"}>{getIssueByPath("name")?.message}</span>
         </div>

@@ -3,3 +3,5 @@
 /.vinxi/
 /node_modules/
 /data/
+package-lock.json
+bun.lock

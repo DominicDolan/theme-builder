@@ -19,7 +19,4 @@ export default createHandler(() => (
             </html>
         )}
     />
-), {
-    mode: "sync",
-    nonce: (Math.random()*10000).toString()
-});
+));
