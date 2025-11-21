@@ -4,7 +4,16 @@ export type SanitizedZodError<T> = Omit<ZodSafeParseError<T>["error"], "format" 
 export type SanitizedParseZodError<T> = (Omit<ZodSafeParseError<T>, "error"> & { error: SanitizedZodError<T> })
 export type SanitizedZodResult<T> = ZodSafeParseSuccess<T> | SanitizedParseZodError<T>
 
-export function sanitize<T>(result: ZodSafeParseResult<T>): SanitizedZodResult<T>  {
+export function sanitizeError<T>(error: ZodSafeParseError<T>["error"]): SanitizedZodError<T> {
+    return {
+        issues: error.issues,
+        message: error.message,
+        name: error.name,
+        type: error.type,
+    }
+}
+
+export function sanitizeResult<T>(result: ZodSafeParseResult<T>): SanitizedZodResult<T>  {
     if (result.success) {
         return {
             data: result.data,
@@ -12,13 +21,9 @@ export function sanitize<T>(result: ZodSafeParseResult<T>): SanitizedZodResult<T
         }
     } else {
         return {
-            error: {
-                issues: result.error.issues,
-                message: result.error.message,
-                name: result.error.name,
-                type: result.error.type,
-            },
+            error: sanitizeError(result.error),
             success: false
         }
     }
 }
+

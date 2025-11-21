@@ -4,24 +4,27 @@ import {
     For, on,
     Suspense
 } from "solid-js"
-import {action, createAsync, query, revalidate, useAction} from "@solidjs/router"
+import { action, createAsync, query, revalidate, useAction} from "@solidjs/router"
 import {createId} from "@paralleldrive/cuid2"
 import {createEventStore} from "~/packages/repository/DeltaStore"
 import {ModelDelta} from "~/packages/repository/ModelDelta"
 import {useReadModelStore} from "~/packages/repository/ReadModelStore"
-import {sanitize, SanitizedZodResult} from "~/packages/utils/ZodSanitize"
 import {ColorDefinition, ColorDelta, colorDefinitionSchema} from "~/app/ThemeEditor/ColorDefinition"
 import {keyedDebounce} from "~/packages/utils/KeyedDebounce"
 import {mergeDeltasAfter} from "~/packages/repository/DeltaMerger"
 import useColorDatabase from "~/data/ColorModelsData"
+import {useDeltaWriteModelReadUtils} from "~/packages/repository/StoreUtils"
+import {zodResponse} from "~/packages/utils/ZodResponse"
 
 const db = useColorDatabase("data")
 
-const eventStore = createEventStore<ColorDefinition>()
-const [pushColorDefinitionEvent, { onAnyDeltaPush, getStreamById }] = eventStore
+const deltaStore = createEventStore<ColorDefinition>()
+const [pushColorDefinitionEvent, { onAnyDeltaPush, getStreamById }] = deltaStore
 
-const readModelStore = useReadModelStore(eventStore)
-const [colorDefinitions, { onModelUpdate, populate, reconcile }] = readModelStore
+const readModelStore = useReadModelStore(deltaStore)
+const [colorDefinitions, { populate, reconcile }] = readModelStore
+
+const {pushDeltaAndAwait} = useDeltaWriteModelReadUtils(deltaStore, readModelStore)
 
 const colorQuery = query(async () => {
     "use server"
@@ -35,24 +38,17 @@ const colorQuery = query(async () => {
 
 export const updateColors = action(async (delta: ModelDelta<ColorDefinition>) => {
     "use server"
-    return new Promise<SanitizedZodResult<ColorDefinition>>((resolve, reject) => {
-        onModelUpdate(async (model) => {
-            try {
-                const result = await colorDefinitionSchema.safeParseAsync(model)
-                resolve(sanitize(result))
-                if (result.success) {
-                    await db.saveColorDelta(delta)
-                    await db.saveColorReadModel(result.data)
-                } else {
-                    reject(result.error)
-                }
-            } catch (e) {
-                reject(e)
-            }
-        }, { once: true })
 
-        pushColorDefinitionEvent(delta.modelId, delta)
-    })
+    const model = await pushDeltaAndAwait(delta.modelId, delta)
+
+    const result = await colorDefinitionSchema.spa(model)
+    if (result.success) {
+        await Promise.allSettled([
+            db.saveColorDelta(delta),
+            db.saveColorReadModel(result.data),
+        ])
+    }
+    return zodResponse(result, { revalidate: [] })
 })
 
 export default function ThemeEditor() {
