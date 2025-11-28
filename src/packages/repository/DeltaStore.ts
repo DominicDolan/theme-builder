@@ -1,4 +1,4 @@
-import {createStore} from "solid-js/store"
+import {createStore, produce} from "solid-js/store"
 import {Model} from "~/packages/repository/Model"
 import {ModelDelta, ModelDeltaOptionalId} from "~/packages/repository/ModelDelta"
 import {createEvent, createKeyedEvent, EventListener, KeyedEventListener} from "~/packages/utils/EventListener"
@@ -16,7 +16,23 @@ export type DeltaStore<M extends Model> = readonly [
     }
 ]
 
-export function createEventStore<M extends Model>(): DeltaStore<M> {
+function insertValueByTimestamp<M extends Model>(arr: ModelDelta<M>[], el: ModelDelta<M>) {
+    let left = 0;
+    let right = arr.length;
+
+    while (left < right) {
+        const mid = (left + right) >>> 1; // Faster than Math.floor
+        if (arr[mid].timestamp <= el.timestamp) {
+            left = mid + 1;
+        } else {
+            right = mid;
+        }
+    }
+
+    arr.splice(left, 0, el);
+}
+
+export function createDeltaStore<M extends Model>(): DeltaStore<M> {
     const [deltaStreams, setDeltaStream] = createStore<Record<string, ModelDelta<M>[]>>({})
 
     const [onAnyDeltaPush, triggerAnyDeltaPush] = createEvent<[ModelDelta<M>[]]>()
@@ -26,7 +42,7 @@ export function createEventStore<M extends Model>(): DeltaStore<M> {
     const [onCreateDeltaPush, triggerCreateDeltaPush] = createEvent<[ModelDelta<M>[]]>()
     const [onCreateDeltaPushById, triggerCreateDeltaPushById] = createKeyedEvent<[ModelDelta<M>[]]>()
 
-    function pushEvent(modelId: string, ...events: Array<ModelDeltaOptionalId<M>>): Array<ModelDelta<M>> {
+    function pushDelta(modelId: string, ...events: Array<ModelDeltaOptionalId<M>>): Array<ModelDelta<M>> {
         const stream = deltaStreams[modelId] as ModelDelta<M>[] | null
         const eventsWithId: ModelDelta<M>[] = events.map(e => ({...e, modelId} as ModelDelta<M>))
         if (stream == null) {
@@ -34,9 +50,11 @@ export function createEventStore<M extends Model>(): DeltaStore<M> {
             triggerCreateDeltaPush(eventsWithId)
             triggerCreateDeltaPushById(modelId, eventsWithId)
         } else {
-            for (const event of eventsWithId) {
-                setDeltaStream(modelId, stream.length ?? 0, event)
-            }
+            setDeltaStream(modelId, produce((arr) => {
+                for (const event of eventsWithId) {
+                    insertValueByTimestamp(arr, event)
+                }
+            }))
             triggerUpdateDeltaPush(eventsWithId)
             triggerUpdateDeltaPushById(modelId, eventsWithId)
         }
@@ -46,7 +64,7 @@ export function createEventStore<M extends Model>(): DeltaStore<M> {
     }
 
     return [
-        pushEvent,
+        pushDelta,
         {
             getStreamById(id: string): ModelDelta<M>[] | undefined {
                 return deltaStreams[id]

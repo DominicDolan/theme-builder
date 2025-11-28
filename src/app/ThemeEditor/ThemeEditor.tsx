@@ -4,9 +4,9 @@ import {
     For, on,
     Suspense
 } from "solid-js"
-import { action, createAsync, query, revalidate, useAction} from "@solidjs/router"
+import {action, createAsync, query, revalidate, useAction} from "@solidjs/router"
 import {createId} from "@paralleldrive/cuid2"
-import {createEventStore} from "~/packages/repository/DeltaStore"
+import {createDeltaStore} from "~/packages/repository/DeltaStore"
 import {ModelDelta} from "~/packages/repository/ModelDelta"
 import {useReadModelStore} from "~/packages/repository/ReadModelStore"
 import {ColorDefinition, ColorDelta, colorDefinitionSchema} from "~/app/ThemeEditor/ColorDefinition"
@@ -18,7 +18,7 @@ import {zodResponse} from "~/packages/utils/ZodResponse"
 
 const db = useColorDatabase("data")
 
-const deltaStore = createEventStore<ColorDefinition>()
+const deltaStore = createDeltaStore<ColorDefinition>()
 const [pushColorDefinitionEvent, { onAnyDeltaPush, getStreamById }] = deltaStore
 
 const readModelStore = useReadModelStore(deltaStore)
@@ -33,7 +33,7 @@ const colorQuery = query(async () => {
     const colorList = Object.keys(colors).map(key => colors[key])
     populate(colorList)
 
-    return colorDefinitions
+    return colorDefinitions()
 }, "get-colors")
 
 export const updateColors = action(async (delta: ModelDelta<ColorDefinition>) => {
@@ -42,11 +42,9 @@ export const updateColors = action(async (delta: ModelDelta<ColorDefinition>) =>
     const model = await pushDeltaAndAwait(delta.modelId, delta)
 
     const result = await colorDefinitionSchema.spa(model)
+
     if (result.success) {
-        await Promise.allSettled([
-            db.saveColorDelta(delta),
-            db.saveColorReadModel(result.data),
-        ])
+        await db.saveColorReadModel(result.data)
     }
     return zodResponse(result, { revalidate: [] })
 })
@@ -56,6 +54,9 @@ export default function ThemeEditor() {
     const colors = createAsync(() => {
         return colorQuery()
     })
+
+    const colorDefinitionsAsync = createAsync(colorDefinitions)
+
     const saveAction = useAction(updateColors)
 
     createEffect(on(colors, (newValue) => {
@@ -101,13 +102,8 @@ export default function ThemeEditor() {
     return <div>
         <h2>TE</h2>
         <div flex={"col gap-4"}>
-            <Suspense fallback={"Loading Colors"}>
-                <div>
-                    Color Length: {colors()?.length?.toString() ?? "undefined"}
-                </div>
-            </Suspense>
-            <Suspense fallback={<div>Loading...</div>}>
-                <For each={colorDefinitions}>
+            <Suspense fallback={<div style={"min-height: 20rem; min-width: 20rem; background-color: red"}>Loading...</div>}>
+                <For each={colorDefinitionsAsync()}>
                     {(def) => <ColorItem definition={def} onDefinitionUpdated={onDefinitionUpdated}/>}
                 </For>
             </Suspense>

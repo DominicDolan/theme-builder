@@ -11,14 +11,14 @@ export default function ColorItem(props: { definition: ColorDefinition, onDefini
 
     const issues = createMemo(() => {
         const submission = submissions[0]
-        if (submission == null) {
+        if (submission == null || submission.result == null) {
             return []
         }
-        const {data, error, success} = submission.result ?? {}
+        const {success, error} = submission.result
         if (success) {
             return []
         }
-        return error?.issues ?? []
+        return error.issues ?? []
     })
 
     function getIssueByPath(path: string) {
@@ -26,6 +26,7 @@ export default function ColorItem(props: { definition: ColorDefinition, onDefini
     }
 
     function onColorChanged(e: InputEvent) {
+        submissions[0]?.clear()
         props.onDefinitionUpdated({
             modelId: props.definition.id,
             timestamp: new Date().getTime(),
@@ -34,6 +35,7 @@ export default function ColorItem(props: { definition: ColorDefinition, onDefini
     }
 
     function onAlphaChanged(e: Event) {
+        submissions[0]?.clear()
         props.onDefinitionUpdated({
             modelId: props.definition.id,
             timestamp: new Date().getTime(),
@@ -43,6 +45,7 @@ export default function ColorItem(props: { definition: ColorDefinition, onDefini
     }
 
     function onNameChanged(e: Event) {
+        submissions[0]?.clear()
         props.onDefinitionUpdated({
             modelId: props.definition.id,
             timestamp: new Date().getTime(),

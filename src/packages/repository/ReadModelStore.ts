@@ -7,7 +7,7 @@ import {batch} from "solid-js"
 
 
 export type ReadModelStore<M extends Model> = [
-    modelsList: M[],
+    modelsList: () => Promise<M[] | undefined>,
     {
         getModelById(id: string): M | undefined,
         onModelCreate: EventListener<[PartialModel<M>]>[0]
@@ -31,6 +31,7 @@ export function useReadModelStore<M extends Model>(eventStore: DeltaStore<M>): R
 
     const [onModelUpdate, triggerModelUpdate] = createEvent<[PartialModel<M>]>()
     const [onModelCreate, triggerModelCreate] = createEvent<[PartialModel<M>]>()
+    const [onModelPopulated, triggerModelPopulate] = createEvent<[]>()
 
     function clearAll() {
         setModels(produce((models) => {
@@ -52,6 +53,7 @@ export function useReadModelStore<M extends Model>(eventStore: DeltaStore<M>): R
             const ids = Object.keys(modelsById)
 
             setModelListStore(ids.map(id => modelsById[id]))
+            triggerModelPopulate()
         })
     }
 
@@ -70,7 +72,7 @@ export function useReadModelStore<M extends Model>(eventStore: DeltaStore<M>): R
                 }
             }
 
-            if (Array.isArray(values)) {
+            if (isArray) {
                 const valueObject = readModelArrayToObject(values)
                 setModels(reconcileSolid(valueObject))
                 reconcileArray(values)
@@ -79,6 +81,7 @@ export function useReadModelStore<M extends Model>(eventStore: DeltaStore<M>): R
                 const valueList = isArray ? values : Object.keys(values).map(key => values[key])
                 reconcileArray(valueList)
             }
+            triggerModelPopulate()
         })
     }
 
@@ -119,8 +122,25 @@ export function useReadModelStore<M extends Model>(eventStore: DeltaStore<M>): R
         }
     })
 
+    let hasPopulatedInitial = false
+    onModelPopulated(() => {
+        hasPopulatedInitial = true
+    })
+
+    const modelListStoreAsync = async () => {
+        return await new Promise<M[]>((res) => {
+            if (hasPopulatedInitial) {
+                res(modelsListStore)
+            } else {
+                onModelPopulated(() => {
+                    res(modelsListStore)
+                })
+            }
+        })
+    }
+
     return [
-        modelsListStore,
+        modelListStoreAsync,
         {
             getModelById(id: string): M | undefined {
                 return modelsById[id]
