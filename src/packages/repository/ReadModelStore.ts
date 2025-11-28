@@ -24,7 +24,7 @@ function readModelArrayToObject<M extends Model>(values: M[]) {
     }, {} as Record<string, M>)
 }
 
-export function useReadModelStore<M extends Model>(eventStore: DeltaStore<M>): ReadModelStore<M> {
+export function createReadModelStore<M extends Model>(eventStore: DeltaStore<M>): ReadModelStore<M> {
     const [_, { getStreamById, onCreateDeltaPush, onUpdateDeltaPushById, onAnyDeltaPush }] = eventStore
     const [modelsById, setModels] = createStore<Record<string, M>>({})
     const [modelsListStore, setModelListStore] = createStore<M[]>([])
@@ -125,6 +125,13 @@ export function useReadModelStore<M extends Model>(eventStore: DeltaStore<M>): R
     let hasPopulatedInitial = false
     onModelPopulated(() => {
         hasPopulatedInitial = true
+    })
+
+    onModelCreate(() => {
+        if (!hasPopulatedInitial) {
+            triggerModelPopulate()
+            hasPopulatedInitial = true
+        }
     })
 
     const modelListStoreAsync = async () => {

@@ -27,7 +27,7 @@ export function reduceMixedDeltas<M extends Model>(deltas: ModelDelta<M>[]): Rec
 }
 
 export function reduceDeltas<M extends Model>(deltas: ModelDelta<M>[]): PartialModel<M> | null {
-    return reduceDeltasAfter(deltas, 0)
+    return reduceDeltasAfter(deltas, -1)
 }
 
 export function reduceDeltasAfter<M extends Model>(deltas: ModelDelta<M>[], after: number): PartialModel<M> | null {
@@ -47,9 +47,12 @@ export function reduceDeltasAfter<M extends Model>(deltas: ModelDelta<M>[], afte
     const acc = { id, updatedAt: deltas.at(-1)?.timestamp ?? Date.now() } as PartialModel<M>
     const handledKeys = ["modelId", "timestamp"]
 
-    for (let i = deltas.length; i >= 0; i--) {
+    for (let i = deltas.length - 1; i >= 0; i--) {
+        if (deltas[i].timestamp <= after) {
+            continue
+        }
         for (const key in deltas[i]) {
-            if (handledKeys.includes(key) || deltas[i].timestamp <= after) continue
+            if (handledKeys.includes(key)) continue
 
             acc[key as keyof PartialModel<M>] = deltas[i][key as keyof ModelDelta<M>] as any
             handledKeys.push(key)

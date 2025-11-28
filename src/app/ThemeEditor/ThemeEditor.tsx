@@ -8,7 +8,7 @@ import {action, createAsync, query, revalidate, useAction} from "@solidjs/router
 import {createId} from "@paralleldrive/cuid2"
 import {createDeltaStore} from "~/packages/repository/DeltaStore"
 import {ModelDelta} from "~/packages/repository/ModelDelta"
-import {useReadModelStore} from "~/packages/repository/ReadModelStore"
+import {createReadModelStore} from "~/packages/repository/ReadModelStore"
 import {ColorDefinition, ColorDelta, colorDefinitionSchema} from "~/app/ThemeEditor/ColorDefinition"
 import {keyedDebounce} from "~/packages/utils/KeyedDebounce"
 import {mergeDeltasAfter} from "~/packages/repository/DeltaMerger"
@@ -21,7 +21,7 @@ const db = useColorDatabase("data")
 const deltaStore = createDeltaStore<ColorDefinition>()
 const [pushColorDefinitionEvent, { onAnyDeltaPush, getStreamById }] = deltaStore
 
-const readModelStore = useReadModelStore(deltaStore)
+const readModelStore = createReadModelStore(deltaStore)
 const [colorDefinitions, { populate, reconcile }] = readModelStore
 
 const {pushDeltaAndAwait} = useDeltaWriteModelReadUtils(deltaStore, readModelStore)
