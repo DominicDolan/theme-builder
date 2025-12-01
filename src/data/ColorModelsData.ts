@@ -22,7 +22,7 @@ export function isSortedByTimestamp(deltas: ModelDelta<any>[]) {
     return true;
 }
 export default function useColorDatabase(directory: string) {
-    const deltasPath = `${directory}/colors-events.json`
+    const deltasPath = `${directory}/colors-deltas.json`
     const readModelPath = `${directory}/colors-read-models.json`
 
     async function prepareDeltaWrite() {
@@ -63,7 +63,7 @@ export default function useColorDatabase(directory: string) {
     return {
         async getColorReadModels() {
             return await new Promise<Record<string, ColorDefinition>>((resolve, reject) => {
-                fs.readFile(`${directory}/colors-read-models.json`, (e, data) => {
+                fs.readFile(readModelPath, (e, data) => {
                     if (e) {
                         reject({})
                     } else {
@@ -105,7 +105,7 @@ export default function useColorDatabase(directory: string) {
         },
         async saveColorReadModel(color: ColorDefinition) {
             const colors = await new Promise<Record<string, ColorDefinition>>((resolve, reject) => {
-                fs.readFile(`${directory}/colors-read-models.json`, (e, data) => {
+                fs.readFile(readModelPath, (e, data) => {
                     if (e) {
                         resolve({})
                     } else {
@@ -121,7 +121,7 @@ export default function useColorDatabase(directory: string) {
             colors[color.id] = color
 
             await new Promise<void>((resolve, reject) => {
-                fs.writeFile(`${directory}/colors-read-models.json`, JSON.stringify(colors), (e) => {
+                fs.writeFile(readModelPath, JSON.stringify(colors), (e) => {
                     if (e) {
                         reject(e)
                     } else {

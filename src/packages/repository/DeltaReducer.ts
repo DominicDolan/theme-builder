@@ -26,11 +26,11 @@ export function reduceMixedDeltas<M extends Model>(deltas: ModelDelta<M>[]): Rec
     return map
 }
 
-export function reduceDeltas<M extends Model>(deltas: ModelDelta<M>[]): PartialModel<M> | null {
-    return reduceDeltasAfter(deltas, -1)
+export function reduceDeltasToModel<M extends Model>(deltas: ModelDelta<M>[]): PartialModel<M> | null {
+    return reduceDeltasToModelAfter(deltas, -1)
 }
 
-export function reduceDeltasAfter<M extends Model>(deltas: ModelDelta<M>[], after: number): PartialModel<M> | null {
+export function reduceDeltasToModelAfter<M extends Model>(deltas: ModelDelta<M>[], after: number): PartialModel<M> | null {
     if (deltas.length === 0) {
         return null
     }
@@ -62,8 +62,28 @@ export function reduceDeltasAfter<M extends Model>(deltas: ModelDelta<M>[], afte
     return acc
 }
 
+export function squashDeltasToSingle<M extends Model>(deltas: ModelDelta<M>[]): ModelDelta<M> {
+    const lastDelta = deltas.at(-1)
+    if (deltas.length < 1 || lastDelta == undefined) {
+        throw new Error("Cannot squash deltas, the given array is empty")
+    }
+
+    const acc = { modelId: lastDelta.modelId, timestamp: lastDelta.timestamp } as ModelDelta<M>
+    const handledKeys: string[] = ["modelId", "timestamp"]
+    for (let i = deltas.length - 1; i >= 0; i--) {
+        for (const key in deltas[i]) {
+            if (handledKeys.includes(key)) continue
+
+            acc[key as keyof ModelDelta<M>] = deltas[i][key as keyof ModelDelta<M>] as any
+            handledKeys.push(key)
+        }
+    }
+
+    return acc
+}
+
 export function reduceDeltasOntoModel<M extends Model>(model: PartialModel<M>, deltas: ModelDelta<M>[]): PartialModel<M> {
-    const newModel = reduceDeltasAfter(deltas, model.updatedAt)
+    const newModel = reduceDeltasToModelAfter(deltas, model.updatedAt)
 
     return {
         ...model,
@@ -76,7 +96,7 @@ export function reduceGroupedDeltas<M extends Model>(deltas: Record<string, Mode
 
     const map = {} as Record<string, PartialModel<M>>
     for (const id of ids) {
-        const model = reduceDeltas(deltas[id])
+        const model = reduceDeltasToModel(deltas[id])
         if (model == null) continue
 
         map[id] = model
@@ -88,5 +108,5 @@ export function reduceGroupedDeltas<M extends Model>(deltas: Record<string, Mode
 export function reduceGroupedDeltasToArray<M extends Model>(deltas: Record<string, ModelDelta<M>[]>) {
     const ids = Object.keys(deltas)
 
-    return ids.map(id => reduceDeltas(deltas[id]))
+    return ids.map(id => reduceDeltasToModel(deltas[id]))
 }

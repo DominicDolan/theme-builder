@@ -1,7 +1,7 @@
 import {expect, test, describe} from "vitest"
 import {Model} from "~/packages/repository/Model"
 import {ModelDelta} from "~/packages/repository/ModelDelta"
-import {reduceDeltasAfter} from "~/packages/repository/DeltaReducer"
+import {reduceDeltasToModelAfter, squashDeltasToSingle} from "~/packages/repository/DeltaReducer"
 
 
 interface TestModel extends Model {
@@ -20,7 +20,7 @@ describe("reduceDeltasAfter", () => {
             }
         ]
 
-        const model = reduceDeltasAfter(deltas, 0)
+        const model = reduceDeltasToModelAfter(deltas, 0)
 
         expect(model).not.toBeNull()
         expect(model?.id).toEqual(modelId)
@@ -47,7 +47,7 @@ describe("reduceDeltasAfter", () => {
             },
         ]
 
-        const model = reduceDeltasAfter(deltas, 0)
+        const model = reduceDeltasToModelAfter(deltas, 0)
 
         expect(model).not.toBeNull()
         expect(model?.id).toEqual(modelId)
@@ -80,11 +80,48 @@ describe("reduceDeltasAfter", () => {
             },
         ]
 
-        const model = reduceDeltasAfter(deltas, 250)
+        const model = reduceDeltasToModelAfter(deltas, 250)
 
         expect(model).not.toBeNull()
         expect(model?.id).toEqual(modelId)
         expect(model?.name).toEqual(name)
         expect(model?.lastName).toBeUndefined()
+    })
+})
+
+describe("squashDeltasToSingle", () => {
+    test("Should be able to squash deltas to a single delta", () => {
+        const modelId = "someId"
+        const name = "updated name"
+        const lastName = "some last name"
+        const deltas: ModelDelta<TestModel & { lastName: string }>[] = [
+            {
+                modelId,
+                timestamp: 100,
+            },
+            {
+                modelId,
+                timestamp: 200,
+                lastName
+            },
+            {
+                modelId,
+                timestamp: 300,
+                name: "initial name"
+            },
+            {
+                modelId,
+                timestamp: 300,
+                name
+            },
+        ]
+
+
+        const delta = squashDeltasToSingle(deltas)
+
+        expect(delta).not.toBeNull()
+        expect(delta?.modelId).toEqual(modelId)
+        expect(delta?.name).toEqual(name)
+        expect(delta?.lastName).toEqual(lastName)
     })
 })

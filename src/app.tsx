@@ -3,9 +3,9 @@ import {A, Route, Router} from "@solidjs/router";
 import "virtual:uno.css"
 import "./style/theme/glass/theme.scss"
 import ExportConfig from "~/app/ImportConfig/ExportConfig"
-import ThemeEditor from "~/app/ThemeEditor/ThemeEditor"
 import Home from "~/app/Home/Home"
 import ContactUs from "~/app/ContactUs/ContactUs"
+import {TestPage} from "~/app/TestPage/TestPage"
 
 export default function App() {
     return (
@@ -52,8 +52,9 @@ export default function App() {
         >
             <Route path={"/"} component={Home} info={{title: "Home", filesystem: true}}/>
             <Route path={"/export"} component={ExportConfig} info={{title: "Import"}}/>
-            <Route path={"/editor"} component={ThemeEditor} info={{title: "Editor"}}/>
+            {/*<Route path={"/editor"} component={ThemeEditor} info={{title: "Editor"}}/>*/}
             <Route path={"/contact"} component={ContactUs} info={{title: "Contact Us"}}/>
+            <Route path={"/test"} component={TestPage} info={{title: "Contact Us"}}/>
         </Router>
     )
 }

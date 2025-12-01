@@ -1,13 +1,14 @@
 import {expect, test} from "vitest"
-import {createDeltaStore} from "./DeltaStore"
+import {defineDeltaStore} from "./DeltaStore"
 import {Model} from "./Model"
 
 interface TestModel extends Model {
     name: string
 }
 
+const useDeltaStore = defineDeltaStore<TestModel>()
 test("DeltaStore stores pushed delta", () => {
-    const store = createDeltaStore<TestModel>()
+    const store = useDeltaStore()
     const [pushDelta, { getStreamById }] = store
     const modelId = "testId-1"
     pushDelta(modelId, { modelId, timestamp: Date.now(), name: "test 1" })
@@ -19,7 +20,7 @@ test("DeltaStore stores pushed delta", () => {
 })
 
 test("DeltaStore stores pushed deltas in order of timestamp", () => {
-    const store = createDeltaStore<TestModel>()
+    const store = useDeltaStore()
     const [pushDelta, { getStreamById }] = store
     const modelId = "testId-1"
 
