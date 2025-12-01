@@ -86,7 +86,7 @@ export function createReadModelStore<M extends Model>(eventStore: DeltaStore<M>)
     }
 
     onCreateDeltaPush((events) => {
-        const modelFromEvents = reduceDeltas(events)
+        const modelFromEvents = reduceDeltasToModel(events)
         if (modelFromEvents == null) return
 
         const modelId = events[0].modelId
@@ -96,12 +96,14 @@ export function createReadModelStore<M extends Model>(eventStore: DeltaStore<M>)
         triggerModelUpdate(model)
 
         onUpdateDeltaPushById(modelId, () => {
+            console.log("updating", model)
             const stream = getStreamById(modelId)
             if (stream == undefined) return
 
-            const newUpdates = reduceDeltasAfter(stream, model.updatedAt)
+            const newUpdates = reduceDeltasToModelAfter(stream, model.updatedAt)
             if (newUpdates == null) return
 
+            console.log("updating model", modelId, newUpdates)
             for (const key in newUpdates) {
                 if (key === "id") {
                     continue
@@ -122,26 +124,34 @@ export function createReadModelStore<M extends Model>(eventStore: DeltaStore<M>)
         }
     })
 
-    let hasPopulatedInitial = false
-    onModelPopulated(() => {
-        hasPopulatedInitial = true
+    let isDirty = true
+
+    onAnyDeltaPush(() => {
+        isDirty = true
     })
 
-    onModelCreate(() => {
-        if (!hasPopulatedInitial) {
+    onModelPopulated(() => {
+        isDirty = false
+    })
+
+    onModelUpdate(() => {
+        if (isDirty) {
             triggerModelPopulate()
-            hasPopulatedInitial = true
+            isDirty = false
         }
     })
 
     const modelListStoreAsync = async () => {
+        console.log("returning promise")
         return await new Promise<M[]>((res) => {
-            if (hasPopulatedInitial) {
+            if (!isDirty) {
+                console.log("from initial")
                 res(modelsListStore)
             } else {
                 onModelPopulated(() => {
+                    console.log("after populated")
                     res(modelsListStore)
-                })
+                }, { once: true })
             }
         })
     }
