@@ -1,10 +1,10 @@
 import ColorItem from "~/app/ThemeEditor/ColorItem"
 import {
-    createEffect,
+    createEffect, createMemo,
     For, on,
     Suspense
 } from "solid-js"
-import {action, createAsync, query, revalidate, useAction} from "@solidjs/router"
+import {action, createAsync, query, revalidate, useAction, useSubmission} from "@solidjs/router"
 import {createId} from "@paralleldrive/cuid2"
 import {defineDeltaStore} from "~/packages/repository/DeltaStore"
 import {ModelDelta} from "~/packages/repository/ModelDelta"
@@ -13,7 +13,7 @@ import {ColorDefinition, ColorDelta, colorDefinitionSchema} from "~/app/ThemeEdi
 import {keyedDebounce} from "~/packages/utils/KeyedDebounce"
 import {mergeDeltasAfter} from "~/packages/repository/DeltaMerger"
 import useColorDatabase from "~/data/ColorModelsData"
-import {useDeltaWriteModelReadUtils} from "~/packages/repository/StoreUtils"
+import {useDeltaReadModelUtils} from "~/packages/repository/StoreUtils"
 import {zodResponse} from "~/packages/utils/ZodResponse"
 import {calculateDelta} from "~/packages/repository/DeltaGenerator"
 import {squashDeltasToSingle} from "~/packages/repository/DeltaReducer"
@@ -21,25 +21,16 @@ import {squashDeltasToSingle} from "~/packages/repository/DeltaReducer"
 const db = useColorDatabase("data")
 
 const useDeltaStore = defineDeltaStore<ColorDefinition>()
-// const [pushColorDefinitionEvent, { onAnyDeltaPush, getStreamById }] = deltaStore
-
-// const readModelStore = createReadModelStore(deltaStore)
-// const [colorDefinitions, { populate, reconcile }] = readModelStore
-//
-// const {pushDeltaAndAwait} = useDeltaWriteModelReadUtils(deltaStore, readModelStore)
 
 const colorQuery = query(async () => {
     "use server"
-    const colors = await db.getColorReadModels()
 
-    const colorList = Object.keys(colors).map(key => colors[key])
-    // populate(colorList)
-
-    return colors
+    return db.getColorDeltas()
 }, "get-colors")
 
 export const updateColors = action(async (delta: ModelDelta<ColorDefinition>) => {
     "use server"
+    const { pushDeltaAndAwait } = useDeltaReadModelUtils(useDeltaStore())
 
     const model = await pushDeltaAndAwait(delta.modelId, delta)
 
@@ -55,26 +46,31 @@ export const updateColors = action(async (delta: ModelDelta<ColorDefinition>) =>
 
 export default function ThemeEditor() {
 
-    const [pushColorDefinitionEvent, { onAnyDeltaPush, getStreamById }] = createAsync(async () => {
-
-        return useDeltaStore(() => colorQuery())
-    })
-    const colors = createAsync(() => {
-        return colorQuery()
+    const deltaStore = useDeltaStore(async () => {
+        return await colorQuery()
     })
 
-    const colorDefinitionsAsync = createAsync(colorDefinitions)
+    const [pushColorDefinitionEvent, { onAnyDeltaPush, getStreamById }] = deltaStore
+
+    const [colors] = createReadModelStore(deltaStore)
 
     const saveAction = useAction(updateColors)
 
-    createEffect(on(colors, (newValue) => {
-        if (newValue != undefined) {
-            reconcile(newValue)
+    const colorsSubmission = useSubmission(updateColors)
+
+    let latestTimestamp = 0
+    const getLatestTimestamp = () => {
+        if (!colorsSubmission.result?.success) {
+            return latestTimestamp
+        } else if (colorsSubmission.result.updatedAt < latestTimestamp) {
+            return latestTimestamp
         }
-    }))
+        latestTimestamp = colorsSubmission.result.updatedAt
+        return latestTimestamp
+    }
 
     const save = keyedDebounce(async (modelId: string) => {
-        const lastUpdated = colors()?.find(c => c.id === modelId)?.updatedAt ?? 0
+        const lastUpdated = getLatestTimestamp()
 
         const stream = getStreamById(modelId)
 
@@ -84,17 +80,20 @@ export default function ThemeEditor() {
 
         if (mergedDeltas == null) return
 
+        colorsSubmission.clear()
         await saveAction(mergedDeltas)
     }, 300)
 
     onAnyDeltaPush((deltas) => {
         const ids = new Set(deltas.map(d => d.modelId))
+        console.log("saving")
         ids.forEach((id) => {
             save(id)
         })
     })
 
     async function onDefinitionUpdated(e: ColorDelta) {
+        console.log("definition updated")
         pushColorDefinitionEvent(e.modelId, e)
     }
 
@@ -111,7 +110,7 @@ export default function ThemeEditor() {
         <h2>TE</h2>
         <div flex={"col gap-4"}>
             <Suspense fallback={<div style={"min-height: 20rem; min-width: 20rem; background-color: red"}>Loading...</div>}>
-                <For each={colorDefinitionsAsync()}>
+                <For each={colors}>
                     {(def) => {
                         console.log("def.name", def.name)
                         return <ColorItem definition={def} onDefinitionUpdated={onDefinitionUpdated}/>

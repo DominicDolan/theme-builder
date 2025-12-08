@@ -48,11 +48,9 @@ export default function useColorDatabase(directory: string) {
                         if (json.length === 0) {
                             resolve({})
                         } else {
-                            console.log("JSON Data", data.toString())
                             resolve(JSON.parse(data.toString()))
                         }
                     } catch (e) {
-                        console.log("JSON Data", data.toString())
                         reject(e)
                     }
                 }

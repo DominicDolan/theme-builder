@@ -2,7 +2,7 @@ import {Model, PartialModel} from "~/packages/repository/Model"
 import {DeltaStore, SourceGetter} from "~/packages/repository/DeltaStore"
 import {createStore, reconcile} from "solid-js/store"
 import {reduceDeltasToModel, reduceDeltasToModelAfter} from "~/packages/repository/DeltaReducer"
-import {createEvent, EventListener} from "~/packages/utils/EventListener"
+import {createEvent, createKeyedEvent, EventListener, KeyedEventListener} from "~/packages/utils/EventListener"
 import {createRenderEffect, on} from "solid-js"
 import {ModelDelta} from "~/packages/repository/ModelDelta"
 
@@ -13,6 +13,7 @@ export type ReadModelStore<M extends Model> = [
         getModelById(id: string): M | undefined,
         onModelCreate: EventListener<[PartialModel<M>]>[0]
         onModelUpdate: EventListener<[PartialModel<M>]>[0]
+        onModelUpdateById: KeyedEventListener<[PartialModel<M>]>[0]
     }
 ]
 
@@ -22,6 +23,7 @@ export function createReadModelStore<M extends Model>(deltaStore: DeltaStore<M>)
     const [modelsListStore, setModelListStore] = createStore<M[]>([])
 
     const [onModelUpdate, triggerModelUpdate] = createEvent<[PartialModel<M>]>()
+    const [onModelUpdateById, triggerModelUpdateById] = createKeyedEvent<[PartialModel<M>]>()
     const [onModelCreate, triggerModelCreate] = createEvent<[PartialModel<M>]>()
     const [onModelPopulated, triggerModelPopulate] = createEvent<[]>()
     const [onCreateDeltaPushInternal, triggerCreateDeltaPush] = createEvent<[ModelDelta<M>[]]>()
@@ -40,6 +42,7 @@ export function createReadModelStore<M extends Model>(deltaStore: DeltaStore<M>)
         setModelsById(modelFromEvents.id, modelFromEvents as M)
         triggerModelCreate(modelFromEvents)
         triggerModelUpdate(modelFromEvents)
+        triggerModelUpdateById(modelId, modelFromEvents)
 
         onUpdateDeltaPushById(modelId, () => {
             onModelUpdatedById(modelId)
@@ -56,6 +59,7 @@ export function createReadModelStore<M extends Model>(deltaStore: DeltaStore<M>)
 
         setModelsById(modelId, reconcile(newUpdates as M))
         triggerModelUpdate(newUpdates)
+        triggerModelUpdateById(modelId, newUpdates)
     }
 
 
@@ -92,6 +96,7 @@ export function createReadModelStore<M extends Model>(deltaStore: DeltaStore<M>)
                 return modelsById[id]
             },
             onModelUpdate,
+            onModelUpdateById,
             onModelCreate,
         }
     ]

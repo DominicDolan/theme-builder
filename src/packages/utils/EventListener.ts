@@ -52,7 +52,7 @@ export function createEvent<P extends Array<unknown>, R = void>(): EventListener
     ]
 }
 
-export type KeyedEventListener<P extends Array<unknown>, R> = [
+export type KeyedEventListener<P extends Array<unknown>, R = void> = [
     onEvent: (key: string | symbol, callback: EventCallbacks<P, R>["callback"], options?: Partial<OnEventOptions>) => void,
     triggerEvent: (key: string | symbol, ...params: P) => void
 ]
