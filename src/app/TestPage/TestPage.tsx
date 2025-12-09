@@ -4,7 +4,7 @@ import {Model} from "~/packages/repository/Model"
 import {ModelDelta} from "~/packages/repository/ModelDelta"
 import {createReadModelStore} from "~/packages/repository/ReadModelStore"
 
-const useDeltaStore = defineDeltaStore<Model & { name: string }>()
+const useDeltaStore = defineDeltaStore<Model & { name: string, age: number  }>()
 
 export function TestPage() {
 
@@ -22,7 +22,7 @@ export function TestComponent() {
     const deltaStore = useDeltaStore(() => {
         return new Promise((res) => {
             setTimeout(() => {
-                const data: ModelDelta<Model & { name: string }>[] = [
+                const data: ModelDelta<Model & { name: string, age: number }>[] = [
                     {
                         modelId,
                         timestamp: 0,
@@ -52,6 +52,14 @@ export function TestComponent() {
         setText("")
     }
 
+    const [age, setAge] = createSignal("0")
+    function addAge() {
+        push(modelId, {
+            age: parseInt(age()) ?? 0
+        })
+        setAge("0")
+    }
+
     return <div>
         <div class={"text-h1"}>
         Test
@@ -66,6 +74,10 @@ export function TestComponent() {
         <div flex={"row gap-4"}>
             <input value={text()} onInput={(e) => setText(e.target.value)}/>
             <button onClick={addText}>Add</button>
+        </div>
+        <div flex={"row gap-4"} spacing={"mt-4"}>
+            <input value={age()} onInput={(e) => setAge(e.target.value)} type={"number"}/>
+            <button onClick={addAge}>Add</button>
         </div>
     </div>
 }

@@ -1,15 +1,14 @@
 import ColorItem from "~/app/ThemeEditor/ColorItem"
 import {
-    createEffect, createMemo,
-    For, on,
+    For,
     Suspense
 } from "solid-js"
-import {action, createAsync, query, revalidate, useAction, useSubmission} from "@solidjs/router"
+import {action, query, revalidate, useAction, useSubmission} from "@solidjs/router"
 import {createId} from "@paralleldrive/cuid2"
 import {defineDeltaStore} from "~/packages/repository/DeltaStore"
 import {ModelDelta} from "~/packages/repository/ModelDelta"
 import {createReadModelStore} from "~/packages/repository/ReadModelStore"
-import {ColorDefinition, ColorDelta, colorDefinitionSchema} from "~/app/ThemeEditor/ColorDefinition"
+import {ColorDefinition, colorDefinitionSchema, ColorDeltaOptional} from "~/app/ThemeEditor/ColorDefinition"
 import {keyedDebounce} from "~/packages/utils/KeyedDebounce"
 import {mergeDeltasAfter} from "~/packages/repository/DeltaMerger"
 import useColorDatabase from "~/data/ColorModelsData"
@@ -86,15 +85,13 @@ export default function ThemeEditor() {
 
     onAnyDeltaPush((deltas) => {
         const ids = new Set(deltas.map(d => d.modelId))
-        console.log("saving")
         ids.forEach((id) => {
             save(id)
         })
     })
 
-    async function onDefinitionUpdated(e: ColorDelta) {
-        console.log("definition updated")
-        pushColorDefinitionEvent(e.modelId, e)
+    async function onDefinitionUpdated(modelId: string, e: ColorDeltaOptional) {
+        pushColorDefinitionEvent(modelId, e)
     }
 
     async function addColorLocal() {
@@ -112,8 +109,7 @@ export default function ThemeEditor() {
             <Suspense fallback={<div style={"min-height: 20rem; min-width: 20rem; background-color: red"}>Loading...</div>}>
                 <For each={colors}>
                     {(def) => {
-                        console.log("def.name", def.name)
-                        return <ColorItem definition={def} onDefinitionUpdated={onDefinitionUpdated}/>
+                        return <ColorItem definition={def} onDefinitionUpdated={onDefinitionUpdated.bind(undefined, def.id)}/>
                     }}
                 </For>
             </Suspense>

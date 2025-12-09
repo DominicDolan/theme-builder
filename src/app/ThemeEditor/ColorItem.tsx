@@ -1,9 +1,9 @@
-import {useSubmission, useSubmissions} from "@solidjs/router"
+import {useSubmissions} from "@solidjs/router"
 import {updateColors} from "~/app/ThemeEditor/ThemeEditor"
 import {createMemo} from "solid-js"
-import {ColorDefinition, ColorDelta} from "~/app/ThemeEditor/ColorDefinition"
+import {ColorDefinition, ColorDeltaOptional} from "~/app/ThemeEditor/ColorDefinition"
 
-export default function ColorItem(props: { definition: ColorDefinition, onDefinitionUpdated: (e: ColorDelta) => void }) {
+export default function ColorItem(props: { definition: ColorDefinition, onDefinitionUpdated: (e: ColorDeltaOptional) => void }) {
 
     const submissions = useSubmissions(updateColors, ([input]) => {
         return input.modelId === props.definition.id
@@ -28,8 +28,6 @@ export default function ColorItem(props: { definition: ColorDefinition, onDefini
     function onColorChanged(e: InputEvent) {
         submissions[0]?.clear()
         props.onDefinitionUpdated({
-            modelId: props.definition.id,
-            timestamp: new Date().getTime(),
             hex: (e.target as HTMLInputElement).value
         })
     }
@@ -37,8 +35,6 @@ export default function ColorItem(props: { definition: ColorDefinition, onDefini
     function onAlphaChanged(e: Event) {
         submissions[0]?.clear()
         props.onDefinitionUpdated({
-            modelId: props.definition.id,
-            timestamp: new Date().getTime(),
             alpha: parseFloat((e.target as HTMLInputElement).value)
         })
 
@@ -47,8 +43,6 @@ export default function ColorItem(props: { definition: ColorDefinition, onDefini
     function onNameChanged(e: Event) {
         submissions[0]?.clear()
         props.onDefinitionUpdated({
-            modelId: props.definition.id,
-            timestamp: new Date().getTime(),
             name: (e.target as HTMLInputElement).value
         })
     }

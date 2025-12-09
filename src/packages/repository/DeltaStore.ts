@@ -9,12 +9,12 @@ export type DeltaStore<M extends Model> = readonly [
     (modelId: string, ...events: Array<ModelDeltaOptionalId<M>>) => Array<ModelDelta<M>>,
     {
         getStreamById(id: string): ModelDelta<M>[] | undefined,
-        onAnyDeltaPush: EventListener<[ModelDelta<M>[]], void>[0]
-        onAnyDeltaPushById: KeyedEventListener<[ModelDelta<M>[]], void>[0]
-        onCreateDeltaPush: EventListener<[ModelDelta<M>[]], void>[0]
-        onCreateDeltaPushById: KeyedEventListener<[ModelDelta<M>[]], void>[0]
-        onUpdateDeltaPush: EventListener<[ModelDelta<M>[]], void>[0]
-        onUpdateDeltaPushById: KeyedEventListener<[ModelDelta<M>[]], void>[0]
+        onAnyDeltaPush: EventListener<[ModelDelta<M>[]]>[0]
+        onAnyDeltaPushById: KeyedEventListener<[ModelDelta<M>[]]>[0]
+        onCreateDeltaPush: EventListener<[ModelDelta<M>[]]>[0]
+        onCreateDeltaPushById: KeyedEventListener<[ModelDelta<M>[]]>[0]
+        onUpdateDeltaPush: EventListener<[ModelDelta<M>[]]>[0]
+        onUpdateDeltaPushById: KeyedEventListener<[ModelDelta<M>[]]>[0]
     }
 ]
 

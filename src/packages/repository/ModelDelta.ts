@@ -5,6 +5,7 @@ export type ModelDelta<M extends Model> = Partial<ModelData<M>> & {
     modelId: string
     timestamp: number
 }
+
 export type ModelDeltaOptionalId<M extends Model> = Partial<ModelData<M>> & {
     modelId?: string
     timestamp?: number

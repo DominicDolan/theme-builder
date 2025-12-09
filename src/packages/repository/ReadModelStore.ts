@@ -1,7 +1,7 @@
 import {Model, PartialModel} from "~/packages/repository/Model"
 import {DeltaStore, SourceGetter} from "~/packages/repository/DeltaStore"
 import {createStore, reconcile} from "solid-js/store"
-import {reduceDeltasToModel, reduceDeltasToModelAfter} from "~/packages/repository/DeltaReducer"
+import {reduceDeltasOntoModel, reduceDeltasToModel} from "~/packages/repository/DeltaReducer"
 import {createEvent, createKeyedEvent, EventListener, KeyedEventListener} from "~/packages/utils/EventListener"
 import {createRenderEffect, on} from "solid-js"
 import {ModelDelta} from "~/packages/repository/ModelDelta"
@@ -54,12 +54,11 @@ export function createReadModelStore<M extends Model>(deltaStore: DeltaStore<M>)
         if (stream == undefined) return
 
         const oldModel = modelsById[modelId]
-        const newUpdates = reduceDeltasToModelAfter(stream, oldModel.updatedAt)
-        if (newUpdates == null) return
+        const newModel = reduceDeltasOntoModel(oldModel, stream)
 
-        setModelsById(modelId, reconcile(newUpdates as M))
-        triggerModelUpdate(newUpdates)
-        triggerModelUpdateById(modelId, newUpdates)
+        setModelsById(modelId, reconcile(newModel as M))
+        triggerModelUpdate(newModel)
+        triggerModelUpdateById(modelId, newModel)
     }
 
 

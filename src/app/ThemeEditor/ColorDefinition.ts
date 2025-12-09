@@ -1,7 +1,7 @@
 import {ModelData, modelSchema} from "~/packages/repository/Model"
 import {z} from "zod"
 import {createId} from "@paralleldrive/cuid2"
-import {ModelDelta} from "~/packages/repository/ModelDelta"
+import {ModelDelta, ModelDeltaOptionalId} from "~/packages/repository/ModelDelta"
 
 export const colorDefinitionSchema = modelSchema.extend({
     hex: z.string(),
@@ -12,6 +12,7 @@ export const colorDefinitionSchema = modelSchema.extend({
 export type ColorDefinition = z.infer<typeof colorDefinitionSchema>
 
 export type ColorDelta = ModelDelta<ColorDefinition>
+export type ColorDeltaOptional = ModelDeltaOptionalId<ColorDefinition>
 
 export function createColorDefinition(defaults?: Partial<ModelData<ColorDefinition>>): ColorDefinition {
     return {
