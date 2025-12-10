@@ -1,16 +1,16 @@
 import {ModelDelta} from "~/packages/repository/ModelDelta"
 import {Model} from "~/packages/repository/Model"
 
-export function mergeDeltasAfter<M extends Model>(deltas: ModelDelta<M>[], timestamp: number) {
+export function sliceArrayAfter<M extends Model>(deltas: ModelDelta<M>[], timestamp: number) {
     if (deltas.length === 0) {
         return null
     }
 
-    let left = 0;
-    let right = deltas.length;
+    let left = 0
+    let right = deltas.length
 
     while (left < right) {
-        const mid = Math.floor((left + right) / 2);
+        const mid = Math.floor((left + right) / 2)
         if (deltas[mid].timestamp <= timestamp) {
             left = mid + 1;
         } else {
@@ -18,11 +18,20 @@ export function mergeDeltasAfter<M extends Model>(deltas: ModelDelta<M>[], times
         }
     }
 
-    if (left >= deltas.length) return null;
+    if (left >= deltas.length) return null
 
-    let result = deltas[left];
+    return deltas.slice(left)
+}
 
-    for (let i = left + 1; i < deltas.length; i++) {
+
+export function mergeDeltasAfter<M extends Model>(deltas: ModelDelta<M>[], timestamp: number) {
+    let arrayAfter = sliceArrayAfter(deltas, timestamp)
+    if (arrayAfter == null) {
+        return null
+    }
+    let result = arrayAfter[0];
+
+    for (let i = 0; i < arrayAfter.length; i++) {
         result = { ...result, ...deltas[i] };
     }
 

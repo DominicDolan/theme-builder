@@ -5,8 +5,9 @@ import "./style/theme/glass/theme.scss"
 import ExportConfig from "~/app/ImportConfig/ExportConfig"
 import Home from "~/app/Home/Home"
 import ContactUs from "~/app/ContactUs/ContactUs"
-import {TestPage} from "~/app/TestPage/TestPage"
+import {ModelStoreTestPage} from "~/app/ModelStoreTestPage/ModelStoreTestPage"
 import ThemeEditor from "~/app/ThemeEditor/ThemeEditor"
+import {AsyncTestPage} from "~/app/AsyncTestPage/AsyncTestPage"
 
 export default function App() {
     return (
@@ -55,7 +56,8 @@ export default function App() {
             <Route path={"/export"} component={ExportConfig} info={{title: "Import"}}/>
             <Route path={"/editor"} component={ThemeEditor} info={{title: "Editor"}}/>
             <Route path={"/contact"} component={ContactUs} info={{title: "Contact Us"}}/>
-            <Route path={"/test"} component={TestPage} info={{title: "Contact Us"}}/>
+            <Route path={"/test"} component={ModelStoreTestPage} info={{title: "Store Test Page"}}/>
+            <Route path={"/test2"} component={AsyncTestPage} info={{title: "Async Test Page"}}/>
         </Router>
     )
 }

@@ -3,23 +3,20 @@ import {
     For,
     Suspense
 } from "solid-js"
-import {action, query, revalidate, useAction, useSubmission} from "@solidjs/router"
+import {action, createAsync, query, revalidate, useAction, useSubmission} from "@solidjs/router"
 import {createId} from "@paralleldrive/cuid2"
-import {defineDeltaStore} from "~/packages/repository/DeltaStore"
+import {createDeltaStore} from "~/packages/repository/DeltaStore"
 import {ModelDelta} from "~/packages/repository/ModelDelta"
-import {createReadModelStore} from "~/packages/repository/ReadModelStore"
+import {createModelStore} from "~/packages/repository/ModelStore"
 import {ColorDefinition, colorDefinitionSchema, ColorDeltaOptional} from "~/app/ThemeEditor/ColorDefinition"
 import {keyedDebounce} from "~/packages/utils/KeyedDebounce"
 import {mergeDeltasAfter} from "~/packages/repository/DeltaMerger"
 import useColorDatabase from "~/data/ColorModelsData"
-import {useDeltaReadModelUtils} from "~/packages/repository/StoreUtils"
 import {zodResponse} from "~/packages/utils/ZodResponse"
 import {calculateDelta} from "~/packages/repository/DeltaGenerator"
 import {squashDeltasToSingle} from "~/packages/repository/DeltaReducer"
 
 const db = useColorDatabase("data")
-
-const useDeltaStore = defineDeltaStore<ColorDefinition>()
 
 const colorQuery = query(async () => {
     "use server"
@@ -29,9 +26,9 @@ const colorQuery = query(async () => {
 
 export const updateColors = action(async (delta: ModelDelta<ColorDefinition>) => {
     "use server"
-    const { pushDeltaAndAwait } = useDeltaReadModelUtils(useDeltaStore())
+    const [_, push] = createModelStore()
 
-    const model = await pushDeltaAndAwait(delta.modelId, delta)
+    const model = await push(delta.modelId, delta)
 
     const result = await colorDefinitionSchema.spa(model)
 
@@ -45,13 +42,7 @@ export const updateColors = action(async (delta: ModelDelta<ColorDefinition>) =>
 
 export default function ThemeEditor() {
 
-    const deltaStore = useDeltaStore(async () => {
-        return await colorQuery()
-    })
-
-    const [pushColorDefinitionEvent, { onAnyDeltaPush, getStreamById }] = deltaStore
-
-    const [colors] = createReadModelStore(deltaStore)
+    const [colors, pushColorDefinitionEvent, { getStreamById, onModelUpdate }] = createModelStore<ColorDefinition>()
 
     const saveAction = useAction(updateColors)
 
@@ -83,11 +74,8 @@ export default function ThemeEditor() {
         await saveAction(mergedDeltas)
     }, 300)
 
-    onAnyDeltaPush((deltas) => {
-        const ids = new Set(deltas.map(d => d.modelId))
-        ids.forEach((id) => {
-            save(id)
-        })
+    onModelUpdate((model) => {
+        save(model.id)
     })
 
     async function onDefinitionUpdated(modelId: string, e: ColorDeltaOptional) {

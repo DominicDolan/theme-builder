@@ -1,38 +1,41 @@
 import {Model, PartialModel} from "~/packages/repository/Model"
-import {DeltaStore, SourceGetter} from "~/packages/repository/DeltaStore"
+import {createDeltaStore} from "~/packages/repository/DeltaStore"
 import {createStore, reconcile} from "solid-js/store"
 import {reduceDeltasOntoModel, reduceDeltasToModel} from "~/packages/repository/DeltaReducer"
 import {createEvent, createKeyedEvent, EventListener, KeyedEventListener} from "~/packages/utils/EventListener"
-import {createRenderEffect, on} from "solid-js"
-import {ModelDelta} from "~/packages/repository/ModelDelta"
+import {ModelDelta, ModelDeltaOptionalId} from "~/packages/repository/ModelDelta"
 
-
-export type ReadModelStore<M extends Model> = [
+export type ModelStore<M extends Model> = [
     modelsList: M[],
+    (modelId: string, ...events: Array<ModelDeltaOptionalId<M>>) => Promise<PartialModel<M>>,
     {
         getModelById(id: string): M | undefined,
+        getStreamById(id: string): ModelDelta<M>[] | undefined,
         onModelCreate: EventListener<[PartialModel<M>]>[0]
         onModelUpdate: EventListener<[PartialModel<M>]>[0]
         onModelUpdateById: KeyedEventListener<[PartialModel<M>]>[0]
     }
 ]
 
-export function createReadModelStore<M extends Model>(deltaStore: DeltaStore<M>): ReadModelStore<M> {
-    const [_, { getStreamById, onCreateDeltaPush, onUpdateDeltaPushById, onAnyDeltaPush }] = deltaStore
+export function createModelStore<M extends Model>(initialDeltas?: Record<string, ModelDelta<M>[]>): ModelStore<M> {
+    const [pushDelta, { getStreamById, onCreateDeltaPush, onUpdateDeltaPushById }] = createDeltaStore()
     const [modelsById, setModelsById] = createStore<Record<string, M>>({})
     const [modelsListStore, setModelListStore] = createStore<M[]>([])
 
     const [onModelUpdate, triggerModelUpdate] = createEvent<[PartialModel<M>]>()
     const [onModelUpdateById, triggerModelUpdateById] = createKeyedEvent<[PartialModel<M>]>()
     const [onModelCreate, triggerModelCreate] = createEvent<[PartialModel<M>]>()
-    const [onModelPopulated, triggerModelPopulate] = createEvent<[]>()
     const [onCreateDeltaPushInternal, triggerCreateDeltaPush] = createEvent<[ModelDelta<M>[]]>()
 
     onCreateDeltaPush((values) => {
         triggerCreateDeltaPush(values)
     })
 
-    createRenderEffect(on((deltaStore as any)[1]._sourceGetter as SourceGetter<M>, () => {}))
+    if (initialDeltas != null) {
+        for (const key in initialDeltas) {
+            pushDelta(key, ...initialDeltas[key])
+        }
+    }
 
     onCreateDeltaPushInternal((events) => {
         const modelFromEvents = reduceDeltasToModel(events)
@@ -71,29 +74,28 @@ export function createReadModelStore<M extends Model>(deltaStore: DeltaStore<M>)
         }
     })
 
-    let isDirty = true
+    function pushDeltaAsync(modelId: string, ...events: Array<ModelDeltaOptionalId<M>>) {
+        return new Promise<PartialModel<M>>((resolve, reject) => {
+            onModelUpdateById(modelId, async (model) => {
+                try {
+                    resolve(model)
+                } catch (e) {
+                    reject(e)
+                }
+            }, { once: true })
 
-    onAnyDeltaPush(() => {
-        isDirty = true
-    })
-
-    onModelPopulated(() => {
-        isDirty = false
-    })
-
-    onModelUpdate(() => {
-        if (isDirty) {
-            triggerModelPopulate()
-            isDirty = false
-        }
-    })
+            pushDelta(modelId, ...events)
+        })
+    }
 
     return [
         modelsListStore,
+        pushDeltaAsync,
         {
             getModelById(id: string): M | undefined {
                 return modelsById[id]
             },
+            getStreamById,
             onModelUpdate,
             onModelUpdateById,
             onModelCreate,
