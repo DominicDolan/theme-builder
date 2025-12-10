@@ -1,7 +1,7 @@
-import {Context, createContext, useContext} from "solid-js"
+import {Context, createContext, useContext, Component} from "solid-js"
 import {createStore} from "solid-js/store"
 
-type DefineContextStore<Props, R> = (setup: (props: Props) => R) => () => R
+type DefineContextStore<Props> = <R>(setup: (props: Props) => R) => () => R
 
 function useContextStore<R>(context: Context<Record<symbol, unknown> | undefined>, key: symbol): R {
     const data = useContext(context)
@@ -12,23 +12,33 @@ function useContextStore<R>(context: Context<Record<symbol, unknown> | undefined
     return data[key] as R
 }
 
-export function createContextStore<Props>() {
+export type CreateContextStore<Props extends Record<string, any>> = [
+    Component<Props & {children?: Node | string | number | boolean | null | undefined}>,
+    DefineContextStore<Props>
+]
+
+export function createContextStore<Props extends Record<string, any>>(): CreateContextStore<Props> {
     const storeContext = createContext<Record<symbol, unknown>>()
-    let defineContextStore: DefineContextStore<Props, any> | null = null
-    function ContextStoreProvider(props: Props & { children: Element }) {
+    let defineContextStore: DefineContextStore<Props> | null = null
+    function ContextStoreProvider(props: Props & {children?: Node | string | number | boolean | null | undefined}) {
         const [data, setData] = createStore<Record<symbol, any>>({})
 
-        defineContextStore = function<R>(setup: (props: Props) => R): () => R {
+        defineContextStore = function<R>(setup: (props: Props & {children: Node | string | number | boolean | null | undefined}) => R): () => R {
             const contextStoreKey = Symbol()
-            setData(contextStoreKey, setup(props))
+            const setupProps = {
+                ...props,
+                children: undefined
+            }
+            setData(contextStoreKey, setup(setupProps))
 
             return () => {
                 if (data[contextStoreKey] == null) {
-                    setData(contextStoreKey, setup(props))
+                    setData(contextStoreKey, setup(setupProps))
                 }
                 return useContextStore(storeContext, contextStoreKey)
             }
         }
+
         return <storeContext.Provider value={data}>
             {props.children}
         </storeContext.Provider>
@@ -38,7 +48,7 @@ export function createContextStore<Props>() {
         ContextStoreProvider,
         function<R>(setup: (props: Props) => R): () => R {
             if (defineContextStore == null) {
-                throw new Error("Tried to define a context store before the cotext has been initialised")
+                throw new Error("Tried to define a context store before the cotext has not been initialised")
             }
             return defineContextStore(setup)
         }

@@ -8,6 +8,7 @@ import ContactUs from "~/app/ContactUs/ContactUs"
 import {ModelStoreTestPage} from "~/app/ModelStoreTestPage/ModelStoreTestPage"
 import ThemeEditor from "~/app/ThemeEditor/ThemeEditor"
 import {AsyncTestPage} from "~/app/AsyncTestPage/AsyncTestPage"
+import {ContextStoreTestPage} from "~/app/ContextStoreTestPage/ContextStoreTestPage"
 
 export default function App() {
     return (
@@ -58,6 +59,7 @@ export default function App() {
             <Route path={"/contact"} component={ContactUs} info={{title: "Contact Us"}}/>
             <Route path={"/test"} component={ModelStoreTestPage} info={{title: "Store Test Page"}}/>
             <Route path={"/test2"} component={AsyncTestPage} info={{title: "Async Test Page"}}/>
+            <Route path={"/test3"} component={ContextStoreTestPage} info={{title: "Context Store Test Page"}}/>
         </Router>
     )
 }
