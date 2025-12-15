@@ -49,13 +49,35 @@ export function DeltaModelContextStoreTest() {
 
 
     return <div>
-        Test
         <Suspense fallback={"Loading..."}>
             <Provider deltas={testModels()}>
-                {(models) => <div><For each={models}>{(model) => {
-                    return <div>JSON: {JSON.stringify(model)}</div>
+                {(models) => <div flex={"col gap-4"}><For each={models}>{(model) => {
+                    return <ChildComponent model={model}/>
                 }}</For></div>}
             </Provider>
         </Suspense>
+    </div>
+}
+
+function ChildComponent(props: {model: TestModel}) {
+
+    const [push] = useDeltaStore()
+
+    function incrementAge(){
+        push(props.model.id, {
+            age: props.model.age + 1
+        })
+    }
+
+    return <div flex={"row gap-4 center"}>
+        <span flex={"row gap-1"}>
+            <strong>Name</strong>
+            <span>{props.model.name}</span>
+        </span>
+        <span flex={"row gap-1"}>
+            <strong>Age</strong>
+            <span>{props.model.age}</span>
+        </span>
+        <button onClick={incrementAge}>Increment Age</button>
     </div>
 }
