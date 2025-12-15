@@ -9,6 +9,7 @@ import {ModelStoreTestPage} from "~/app/ModelStoreTestPage/ModelStoreTestPage"
 import ThemeEditor from "~/app/ThemeEditor/ThemeEditor"
 import {AsyncTestPage} from "~/app/AsyncTestPage/AsyncTestPage"
 import {ContextStoreTestPage} from "~/app/ContextStoreTestPage/ContextStoreTestPage"
+import {DeltaModelContextStoreTest} from "~/app/DeltaModelContextStoreTest/DeltaModelContextStoreTest";
 
 export default function App() {
     return (
@@ -60,6 +61,7 @@ export default function App() {
             <Route path={"/test"} component={ModelStoreTestPage} info={{title: "Store Test Page"}}/>
             <Route path={"/test2"} component={AsyncTestPage} info={{title: "Async Test Page"}}/>
             <Route path={"/test3"} component={ContextStoreTestPage} info={{title: "Context Store Test Page"}}/>
+            <Route path={"/test4"} component={DeltaModelContextStoreTest} info={{title: "Delta Model Context Store Test Page"}}/>
         </Router>
     )
 }

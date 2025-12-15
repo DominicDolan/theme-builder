@@ -31,12 +31,6 @@ export function createModelStore<M extends Model>(initialDeltas?: Record<string,
         triggerCreateDeltaPush(values)
     })
 
-    if (initialDeltas != null) {
-        for (const key in initialDeltas) {
-            pushDelta(key, ...initialDeltas[key])
-        }
-    }
-
     onCreateDeltaPushInternal((events) => {
         const modelFromEvents = reduceDeltasToModel(events)
         if (modelFromEvents == null) return
@@ -52,6 +46,21 @@ export function createModelStore<M extends Model>(initialDeltas?: Record<string,
         })
     })
 
+    onModelUpdate((model) => {
+        const index = modelsListStore.findIndex(m => m.id === model.id)
+        if (index === -1) {
+            setModelListStore(modelsListStore.length, model as M)
+        } else {
+            setModelListStore(index, reconcile(model as M))
+        }
+    })
+
+    if (initialDeltas != null) {
+        for (const key in initialDeltas) {
+            pushDelta(key, ...initialDeltas[key])
+        }
+    }
+
     function onModelUpdatedById(modelId: string) {
         const stream = getStreamById(modelId)
         if (stream == undefined) return
@@ -63,16 +72,6 @@ export function createModelStore<M extends Model>(initialDeltas?: Record<string,
         triggerModelUpdate(newModel)
         triggerModelUpdateById(modelId, newModel)
     }
-
-
-    onModelUpdate((model) => {
-        const index = modelsListStore.findIndex(m => m.id === model.id)
-        if (index === -1) {
-            setModelListStore(modelsListStore.length, model as M)
-        } else {
-            setModelListStore(index, reconcile(model as M))
-        }
-    })
 
     function pushDeltaAsync(modelId: string, ...events: Array<ModelDeltaOptionalId<M>>) {
         return new Promise<PartialModel<M>>((resolve, reject) => {
