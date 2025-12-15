@@ -17,7 +17,10 @@ export function keyedDebounce<T extends (...args: any[]) => any>(
     const debounceMap = new Map<string, DebouncedFunction<T>>
 
     function keyedDebounce(this: any, ...args: Parameters<T>) {
-        const key = JSON.stringify(args)
+        if (args.length === 0) {
+            throw new Error("No arguments provided as a key to debounce function")
+        }
+        const key = args[0]
         if (!debounceMap.has(key)) {
             debounceMap.set(key, debounce(func, wait, options))
         }

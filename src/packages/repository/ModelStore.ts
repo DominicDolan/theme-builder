@@ -1,5 +1,5 @@
 import {Model, PartialModel} from "~/packages/repository/Model"
-import {createDeltaStore} from "~/packages/repository/DeltaStore"
+import {createDeltaStore, DeltaStore} from "~/packages/repository/DeltaStore"
 import {createStore, reconcile} from "solid-js/store"
 import {reduceDeltasOntoModel, reduceDeltasToModel} from "~/packages/repository/DeltaReducer"
 import {createEvent, createKeyedEvent, EventListener, KeyedEventListener} from "~/packages/utils/EventListener"
@@ -13,12 +13,13 @@ export type ModelStore<M extends Model> = [
         getStreamById(id: string): ModelDelta<M>[] | undefined,
         onModelCreate: EventListener<[PartialModel<M>]>[0]
         onModelUpdate: EventListener<[PartialModel<M>]>[0]
+        onAnyDeltaPush: DeltaStore<M>[1]["onAnyDeltaPush"]
         onModelUpdateById: KeyedEventListener<[PartialModel<M>]>[0]
     }
 ]
 
 export function createModelStore<M extends Model>(initialDeltas?: Record<string, ModelDelta<M>[]>): ModelStore<M> {
-    const [pushDelta, { getStreamById, onCreateDeltaPush, onUpdateDeltaPushById }] = createDeltaStore()
+    const [pushDelta, { getStreamById, onCreateDeltaPush, onUpdateDeltaPushById, onAnyDeltaPush }] = createDeltaStore()
     const [modelsById, setModelsById] = createStore<Record<string, M>>({})
     const [modelsListStore, setModelListStore] = createStore<M[]>([])
 
@@ -97,6 +98,7 @@ export function createModelStore<M extends Model>(initialDeltas?: Record<string,
             getStreamById,
             onModelUpdate,
             onModelUpdateById,
+            onAnyDeltaPush,
             onModelCreate,
         }
     ]

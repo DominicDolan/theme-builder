@@ -1,8 +1,9 @@
-import {createDeltaModelContextStore} from "~/packages/contextStore/DeltaModelContextStore";
+import {createDeltaModelContextStore, deltasSince} from "~/packages/contextStore/DeltaModelContextStore";
 import {Model} from "~/packages/repository/Model";
-import {ModelDelta} from "~/packages/repository/ModelDelta";
-import {For, Suspense} from "solid-js";
+import {ModelDelta, ModelDeltaOptionalId} from "~/packages/repository/ModelDelta";
+import {createSignal, For, Suspense} from "solid-js";
 import {createAsync} from "@solidjs/router";
+import {keyedDebounce} from "~/packages/utils/KeyedDebounce";
 
 type TestModel = Model & {
     name: string
@@ -47,15 +48,24 @@ export function DeltaModelContextStoreTest() {
             }), 1000))
     })
 
+    const save = keyedDebounce((modelId: string, deltas: ModelDeltaOptionalId<TestModel>[]) => {
+        console.log("saving deltas debounced:", deltas)
+    }, 1000)
 
-    return <div>
+    function onDeltaPush(modelId: string, deltas: ModelDeltaOptionalId<TestModel>[]) {
+        save(modelId, deltas)
+    }
+
+    const [latestTimestamp, setTimestamp] = createSignal(201)
+    return <div flex={"col gap-4"}>
         <Suspense fallback={"Loading..."}>
-            <Provider deltas={testModels()}>
+            <Provider deltas={testModels()} onDeltaPush={deltasSince(latestTimestamp(), onDeltaPush)}>
                 {(models) => <div flex={"col gap-4"}><For each={models}>{(model) => {
                     return <ChildComponent model={model}/>
                 }}</For></div>}
             </Provider>
         </Suspense>
+        <button onClick={() => setTimestamp(Date.now())}>Update Timestamp</button>
     </div>
 }
 
