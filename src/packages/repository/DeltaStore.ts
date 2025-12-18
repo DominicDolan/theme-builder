@@ -1,7 +1,7 @@
 import {createStore, produce} from "solid-js/store"
-import {Model} from "~/packages/repository/Model"
-import {ModelDelta, ModelDeltaOptionalId} from "~/packages/repository/ModelDelta"
+import {ModelDelta, ModelDeltaOptionalId} from "~/data/ModelDelta"
 import {createEvent, createKeyedEvent, EventListener, KeyedEventListener} from "~/packages/utils/EventListener"
+import {Model} from "~/data/Model";
 
 export type DeltaStore<M extends Model> = readonly [
     (modelId: string, ...events: Array<ModelDeltaOptionalId<M>>) => Array<ModelDelta<M>>,

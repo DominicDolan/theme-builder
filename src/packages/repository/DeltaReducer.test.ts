@@ -1,7 +1,7 @@
 import {expect, test, describe} from "vitest"
-import {Model} from "~/packages/repository/Model"
-import {ModelDelta} from "~/packages/repository/ModelDelta"
+import {ModelDelta} from "~/data/ModelDelta"
 import {reduceDeltasToModelAfter, squashDeltasToSingle} from "~/packages/repository/DeltaReducer"
+import {Model} from "~/data/Model";
 
 
 interface TestModel extends Model {

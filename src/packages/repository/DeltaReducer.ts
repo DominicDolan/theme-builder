@@ -1,5 +1,5 @@
-import {ModelDelta} from "~/packages/repository/ModelDelta"
-import {Model, PartialModel} from "~/packages/repository/Model"
+import {ModelDelta} from "~/data/ModelDelta"
+import {Model, PartialModel} from "~/data/Model";
 
 
 export function reduceMixedDeltas<M extends Model>(deltas: ModelDelta<M>[]): Record<string, Partial<M>> {

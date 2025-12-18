@@ -1,9 +1,9 @@
 import {createDeltaModelContextStore, deltasSince} from "~/packages/contextStore/DeltaModelContextStore";
-import {Model} from "~/packages/repository/Model";
-import {ModelDelta, ModelDeltaOptionalId} from "~/packages/repository/ModelDelta";
+import {ModelDelta, ModelDeltaOptionalId} from "~/data/ModelDelta";
 import {createSignal, For, Suspense} from "solid-js";
 import {createAsync} from "@solidjs/router";
 import {keyedDebounce} from "~/packages/utils/KeyedDebounce";
+import {Model} from "~/data/Model";
 
 type TestModel = Model & {
     name: string

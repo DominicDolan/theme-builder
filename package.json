@@ -2,7 +2,9 @@
   "name": "example-bare",
   "type": "module",
   "scripts": {
-    "dev": "vinxi dev --port 3001",
+    "dev": "concurrently \"npm run dev:vite\" \"npm run dev:wrangler\"",
+    "dev:vite": "vinxi dev --port 3001",
+    "dev:wrangler": "wrangler dev --port 8788",
     "build": "vinxi build",
     "start": "vinxi start",
     "test": "vitest"
@@ -19,9 +21,11 @@
   },
   "devDependencies": {
     "@unocss/preset-attributify": "66.5.0",
+    "concurrently": "^9.2.1",
     "jsdom": "27.2.0",
     "sass-embedded": "1.91.0",
-    "vitest": "3.2.4"
+    "vitest": "3.2.4",
+    "wrangler": "^4.55.0"
   },
   "engines": {
     "node": ">=22"

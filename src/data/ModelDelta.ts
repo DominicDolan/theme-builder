@@ -1,4 +1,4 @@
-import {Model, ModelData} from "~/packages/repository/Model"
+import {Model, ModelData} from "~/data/Model";
 
 
 export type ModelDelta<M extends Model> = Partial<ModelData<M>> & {

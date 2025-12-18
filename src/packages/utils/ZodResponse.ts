@@ -1,8 +1,7 @@
 import {CustomResponse, json, RouterResponseInit} from "@solidjs/router"
 import {ZodSafeParseResult} from "zod"
 import {SanitizedZodError, sanitizeError} from "~/packages/utils/ZodSanitize"
-import {ModelDelta} from "~/packages/repository/ModelDelta"
-import {Model} from "~/packages/repository/Model"
+import {Model} from "~/data/Model";
 
 export function zodResponse(result: ZodSafeParseResult<unknown>, init?: RouterResponseInit): CustomResponse<{ success: true, error: undefined, updatedAt: number } | { success: false, error: SanitizedZodError<unknown>, updatedAt: undefined }> {
     if (result.success) {

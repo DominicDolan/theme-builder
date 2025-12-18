@@ -1,6 +1,6 @@
-import {Model} from "~/packages/repository/Model"
-import {ModelDelta} from "~/packages/repository/ModelDelta"
+import {ModelDelta} from "~/data/ModelDelta"
 import {isEqual} from "~/packages/utils/IsEqual"
+import {Model} from "~/data/Model";
 
 /**
  * Calculates the difference between two model instances and returns a delta object

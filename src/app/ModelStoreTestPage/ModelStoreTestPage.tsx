@@ -1,6 +1,6 @@
 import {createSignal, For, Suspense} from "solid-js"
-import {Model} from "~/packages/repository/Model"
 import {createModelStore} from "~/packages/repository/ModelStore"
+import {Model} from "~/data/Model";
 
 export function ModelStoreTestPage() {
 

@@ -1,8 +1,8 @@
 import {createContext, createEffect, on, Show, useContext} from "solid-js";
 import {createModelStore} from "~/packages/repository/ModelStore";
-import {Model, PartialModel} from "~/packages/repository/Model";
-import {ModelDelta, ModelDeltaOptionalId} from "~/packages/repository/ModelDelta";
+import {ModelDelta, ModelDeltaOptionalId} from "~/data/ModelDelta";
 import {sliceArrayAfter} from "~/packages/repository/DeltaMerger";
+import {Model, PartialModel} from "~/data/Model";
 
 export type ContextStoreProviderProps<M extends Model> = {
     deltas: Record<string, ModelDelta<M>[]> | undefined

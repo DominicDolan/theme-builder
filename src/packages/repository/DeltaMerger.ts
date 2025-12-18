@@ -1,5 +1,5 @@
-import {ModelDelta} from "~/packages/repository/ModelDelta"
-import {Model} from "~/packages/repository/Model"
+import {ModelDelta} from "~/data/ModelDelta"
+import {Model} from "~/data/Model";
 
 export function sliceArrayAfter<M extends Model>(deltas: ModelDelta<M>[], timestamp: number) {
     if (deltas.length === 0) {

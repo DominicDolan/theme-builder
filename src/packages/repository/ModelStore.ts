@@ -1,9 +1,9 @@
-import {Model, PartialModel} from "~/packages/repository/Model"
 import {createDeltaStore, DeltaStore} from "~/packages/repository/DeltaStore"
 import {createStore, reconcile} from "solid-js/store"
 import {reduceDeltasOntoModel, reduceDeltasToModel} from "~/packages/repository/DeltaReducer"
 import {createEvent, createKeyedEvent, EventListener, KeyedEventListener} from "~/packages/utils/EventListener"
-import {ModelDelta, ModelDeltaOptionalId} from "~/packages/repository/ModelDelta"
+import {ModelDelta, ModelDeltaOptionalId} from "~/data/ModelDelta"
+import {Model, PartialModel} from "~/data/Model";
 
 export type ModelStore<M extends Model> = [
     modelsList: M[],

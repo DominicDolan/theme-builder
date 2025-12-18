@@ -1,32 +1,45 @@
-import ColorItem from "~/app/ThemeEditor/ColorItem"
 import {
     createSignal,
     For,
     Suspense
 } from "solid-js"
 import {action, createAsync, query, revalidate, useAction, useSubmission} from "@solidjs/router"
-import {ModelDelta} from "~/packages/repository/ModelDelta"
+import {ModelDelta} from "~/data/ModelDelta"
 import {createModelStore} from "~/packages/repository/ModelStore"
-import {ColorDefinition, colorDefinitionSchema, ColorDeltaOptional} from "~/app/ThemeEditor/ColorDefinition"
 import {keyedDebounce} from "~/packages/utils/KeyedDebounce"
-import useColorDatabase from "~/data/ColorModelsData"
 import {zodResponse} from "~/packages/utils/ZodResponse"
 import {calculateDelta} from "~/packages/repository/DeltaGenerator"
 import {squashDeltasToSingle} from "~/packages/repository/DeltaReducer"
-import {createDeltaModelContextStore, deltasSince} from "~/packages/contextStore/DeltaModelContextStore";
-import {ColorAddButton} from "~/app/ThemeEditor/ColorAddButton";
+import {createDeltaModelContextStore} from "~/packages/contextStore/DeltaModelContextStore";
+import {getRequestEvent} from "solid-js/web";
+import {getPlatformProxy} from "wrangler";
+import {ColorDefinition, colorDefinitionSchema} from "~/data/ColorDefinition";
 
-const db = useColorDatabase("data")
+async function getDB() {
+    const event = getRequestEvent();
+    const cloudflareContext = event?.nativeEvent.context.cloudflare
+    if (cloudflareContext != null) return cloudflareContext.env.DB
+
+    const platformProxy = await getPlatformProxy()
+
+    return platformProxy.env.DB
+}
+
+const TABLE_LIST_QUERY = "SELECT name FROM sqlite_master WHERE type='table';"
 
 const colorQuery = query(async () => {
     "use server"
 
-    return db.getColorDeltas()
+    const db = await getDB()
+    const {results} = await db.prepare(TABLE_LIST_QUERY).all()
+
+    return results.map(row => row.name)
 }, "get-colors")
 
 export const updateColors = action(async (delta: ModelDelta<ColorDefinition>) => {
     "use server"
-    const deltas = await db.getColorDeltas()
+
+    const deltas = []
     const [_, push] = createModelStore(deltas)
 
     const model = await push(delta.modelId, delta)
@@ -36,7 +49,7 @@ export const updateColors = action(async (delta: ModelDelta<ColorDefinition>) =>
     if (result.success) {
         const resultDelta = calculateDelta(model, result.data)
         const deltaToSave = resultDelta == null ? delta : squashDeltasToSingle([delta, resultDelta])
-        await db.saveColorDelta(deltaToSave)
+        await Promise.resolve()//db.saveColorDelta(deltaToSave)
     }
     return zodResponse(result, { revalidate: [] })
 })
@@ -72,16 +85,19 @@ export default function ThemeEditor() {
         <h2>TE</h2>
         <div flex={"col gap-4"}>
             <Suspense fallback={<div style={"min-height: 20rem; min-width: 20rem; background-color: red"}>Loading...</div>}>
-                <ColorProvider deltas={colorDeltas()} onDeltaPush={deltasSince(latestTimestamp(), onColorDeltaPush)}>
-                    {(colorModels) => <div>
-                        <For each={colorModels}>
-                            {(def) => {
-                                return <ColorItem definition={def}/>
-                            }}
-                        </For>
-                        <ColorAddButton/>
-                    </div>}
-                </ColorProvider>
+                <div>
+                    Output: {String(colorDeltas())}
+                </div>
+                {/*<ColorProvider deltas={colorDeltas()} onDeltaPush={deltasSince(latestTimestamp(), onColorDeltaPush)}>*/}
+                {/*    {(colorModels) => <div>*/}
+                {/*        <For each={colorModels}>*/}
+                {/*            {(def) => {*/}
+                {/*                return <ColorItem definition={def}/>*/}
+                {/*            }}*/}
+                {/*        </For>*/}
+                {/*        <ColorAddButton/>*/}
+                {/*    </div>}*/}
+                {/*</ColorProvider>*/}
             </Suspense>
             <button onClick={() => revalidate(colorQuery.key)}>Revalidate</button>
         </div>
