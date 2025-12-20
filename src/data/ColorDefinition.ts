@@ -1,5 +1,5 @@
 import {modelSchema} from "~/data/Model";
-import {ModelDelta, ModelDeltaOptionalId} from "~/data/ModelDelta";
+import {ModelDelta, PartialModelDelta} from "~/data/ModelDelta";
 import {z} from "zod";
 
 export const colorDefinitionSchema = modelSchema.extend({
@@ -11,4 +11,4 @@ export const colorDefinitionSchema = modelSchema.extend({
 export type ColorDefinition = z.infer<typeof colorDefinitionSchema>
 
 export type ColorDelta = ModelDelta<ColorDefinition>
-export type ColorDeltaOptional = ModelDeltaOptionalId<ColorDefinition>
+export type ColorDeltaOptional = PartialModelDelta<ColorDefinition>

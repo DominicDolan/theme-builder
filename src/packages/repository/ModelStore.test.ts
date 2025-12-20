@@ -1,6 +1,6 @@
 import {describe, expect, test} from "vitest"
 import {createModelStore} from "~/packages/repository/ModelStore"
-import {Model} from "~/packages/repository/Model"
+import {Model} from "~/data/Model";
 
 interface TestModel extends Model {
     name: string
@@ -18,7 +18,7 @@ async function sleep(time: number) {
 describe("ReadModelStore deltaStore reading", () => {
     test("Update to delta store causes ReadModelStore to update", async () => {
         const store = createModelStore<TestModel>()
-        const [values, pushDelta] = store
+        const [values, pushDelta, { pushMany }] = store
 
         const modelId = "someId"
         const name = "some name"
@@ -27,11 +27,14 @@ describe("ReadModelStore deltaStore reading", () => {
 
         expect(readModels).not.toBeUndefined()
         expect(readModels?.length).toBe(0)
-
-        pushDelta(modelId, {
+        pushMany([{
+            modelId,
             timestamp: 100,
-            name
-        })
+            type: "create",
+            payload: {
+                name
+            }
+        }])
 
         expect(readModels?.length).toBe(1)
         expect(readModels?.[0].name).toEqual(name)
@@ -40,7 +43,7 @@ describe("ReadModelStore deltaStore reading", () => {
 
     test("Updating 2 properties separately causes ReadModelStore to update", async () => {
         const store = createModelStore<TestModel>()
-        const [values, pushDelta] = store
+        const [values, pushDelta, { pushMany }] = store
 
         const modelId = "someId"
         const name = "some name"
@@ -51,17 +54,63 @@ describe("ReadModelStore deltaStore reading", () => {
         expect(readModels).not.toBeUndefined()
         expect(readModels?.length).toBe(0)
 
-        pushDelta(modelId, {
+        pushMany([{
+            modelId,
             timestamp: 100,
-            name
-        })
+            type: "create",
+            payload: {
+                name
+            }
+        }])
 
         expect(readModels?.length).toBe(1)
 
-        pushDelta(modelId, {
+        pushMany([{
+            modelId,
             timestamp: 200,
-            age
-        })
+            type: "update",
+            payload: {
+                age
+            }
+        }])
+
+        expect(readModels?.length).toBe(1)
+        expect(readModels?.[0].name).toEqual(name)
+        expect(readModels?.[0].age).toEqual(age)
+
+    })
+
+    test("Updating 2 properties separately with the same timestamp causes ReadModelStore to update", async () => {
+        const store = createModelStore<TestModel>()
+        const [values, _, { pushMany }] = store
+
+        const modelId = "someId"
+        const name = "some name"
+        const age = 21
+
+        const readModels = values
+
+        expect(readModels).not.toBeUndefined()
+        expect(readModels?.length).toBe(0)
+
+        pushMany([
+            {
+                modelId,
+                timestamp: 100,
+                type: "create",
+                payload: {
+                    name
+                }
+            },
+            {
+                modelId,
+                timestamp: 100,
+                type: "update",
+                payload: {
+                    age
+                }
+            }
+        ])
 
         expect(readModels?.length).toBe(1)
         expect(readModels?.[0].name).toEqual(name)

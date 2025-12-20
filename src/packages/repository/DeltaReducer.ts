@@ -1,5 +1,5 @@
 import {ModelDelta} from "~/data/ModelDelta"
-import {Model, PartialModel} from "~/data/Model";
+import {Model, ModelData, PartialModel} from "~/data/Model";
 
 
 export function reduceMixedDeltas<M extends Model>(deltas: ModelDelta<M>[]): Record<string, Partial<M>> {
@@ -51,10 +51,10 @@ export function reduceDeltasToModelAfter<M extends Model>(deltas: ModelDelta<M>[
         if (deltas[i].timestamp <= after) {
             continue
         }
-        for (const key in deltas[i]) {
+        for (const key in deltas[i].payload) {
             if (handledKeys.includes(key)) continue
 
-            acc[key as keyof PartialModel<M>] = deltas[i][key as keyof ModelDelta<M>] as any
+            acc[key as keyof PartialModel<M>] = deltas[i].payload[key as keyof ModelData<M>] as any
             handledKeys.push(key)
         }
     }
@@ -62,24 +62,35 @@ export function reduceDeltasToModelAfter<M extends Model>(deltas: ModelDelta<M>[
     return acc
 }
 
-export function squashDeltasToSingle<M extends Model>(deltas: ModelDelta<M>[]): ModelDelta<M> {
+export function squashDeltasToSingle<M extends Model>(deltas: ModelDelta<M>[]): ModelDelta<M> | null {
     const lastDelta = deltas.at(-1)
     if (deltas.length < 1 || lastDelta == undefined) {
         throw new Error("Cannot squash deltas, the given array is empty")
     }
 
-    const acc = { modelId: lastDelta.modelId, timestamp: lastDelta.timestamp } as ModelDelta<M>
+    const payload: Partial<ModelDelta<M>["payload"]> = {}
     const handledKeys: string[] = ["modelId", "timestamp"]
     for (let i = deltas.length - 1; i >= 0; i--) {
-        for (const key in deltas[i]) {
+        for (const key in deltas[i].payload) {
             if (handledKeys.includes(key)) continue
 
-            acc[key as keyof ModelDelta<M>] = deltas[i][key as keyof ModelDelta<M>] as any
+            payload[key as keyof ModelDelta<M>["payload"]] = deltas[i].payload[key as keyof ModelData<M>] as any
             handledKeys.push(key)
         }
     }
-
-    return acc
+    let type: ModelDelta<M>["type"]
+    const hasCreate = deltas.some(d => d.type === "create")
+    const hasDelete = deltas.some(d => d.type === "delete")
+    if (hasCreate && hasDelete) {
+        return null
+    } else if (hasCreate) {
+        type = "create"
+    } else if (hasDelete) {
+        type = "delete"
+    } else {
+        type = "update"
+    }
+    return { modelId: lastDelta.modelId, timestamp: lastDelta.timestamp, payload, type } as ModelDelta<M>
 }
 
 export function reduceDeltasOntoModel<M extends Model>(model: PartialModel<M>, deltas: ModelDelta<M>[]): PartialModel<M> {
@@ -89,6 +100,19 @@ export function reduceDeltasOntoModel<M extends Model>(model: PartialModel<M>, d
         ...model,
         ...newModel
     }
+}
+
+export function deltaArrayToGroup<M extends Model>(deltas: ModelDelta<M>[]): Record<string, ModelDelta<M>[]> {
+    const groups: Record<string, ModelDelta<M>[]> = {}
+
+    for (const delta of deltas) {
+        if (groups[delta.modelId] == null) {
+            groups[delta.modelId] = []
+        }
+        groups[delta.modelId].push(delta)
+    }
+
+    return groups
 }
 
 export function reduceGroupedDeltas<M extends Model>(deltas: Record<string, ModelDelta<M>[]>) {

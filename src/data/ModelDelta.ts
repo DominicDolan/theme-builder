@@ -1,14 +1,17 @@
 import {Model, ModelData} from "~/data/Model";
 
-
-export type ModelDelta<M extends Model> = Partial<ModelData<M>> & {
+export type ModelDeltaBase = {
     modelId: string
     timestamp: number
+    type: "create" | "update" | "delete"
 }
 
-export type ModelDeltaOptionalId<M extends Model> = Partial<ModelData<M>> & {
-    modelId?: string
-    timestamp?: number
+export type ModelDeltaCreate<M extends Model> = Omit<ModelDeltaBase, "type"> & { type: "create", payload: Partial<ModelData<M>> }
+
+export type ModelDelta<M extends Model> = ModelDeltaBase & {
+    payload: Partial<ModelData<M>>
 }
 
-export type ServerModelDelta<M extends Model> = ModelDelta<M> & { deltaId: string }
+export type PartialModelDelta<M extends Model> = Partial<ModelDeltaBase> & {
+    payload: Partial<ModelData<M>>
+}

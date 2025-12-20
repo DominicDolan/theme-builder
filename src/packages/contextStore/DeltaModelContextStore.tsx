@@ -1,8 +1,8 @@
 import {createContext, createEffect, on, Show, useContext} from "solid-js";
-import {createModelStore} from "~/packages/repository/ModelStore";
-import {ModelDelta, ModelDeltaOptionalId} from "~/data/ModelDelta";
+import {createModelStore, ModelStore} from "~/packages/repository/ModelStore";
+import {ModelDelta} from "~/data/ModelDelta";
 import {sliceArrayAfter} from "~/packages/repository/DeltaMerger";
-import {Model, PartialModel} from "~/data/Model";
+import {Model} from "~/data/Model";
 
 export type ContextStoreProviderProps<M extends Model> = {
     deltas: Record<string, ModelDelta<M>[]> | undefined
@@ -27,7 +27,7 @@ export function deltasSince<M extends Model>(timestamp: number, callback: Requir
 
 
 export function createDeltaModelContextStore<M extends Model>() {
-    const storeContext = createContext<{ pushDelta: (modelId: string, ...events: ModelDeltaOptionalId<M>[]) => Promise<PartialModel<M>>}>()
+    const storeContext = createContext<{ pushDelta: ModelStore<M>[1]}>()
 
     function useDeltaStore() {
         const context = useContext(storeContext)
@@ -59,7 +59,12 @@ export function createDeltaModelContextStore<M extends Model>() {
                     return
                 }
                 for (const key in props.deltas) {
-                    push(key, ...props.deltas[key])
+
+                    const deltas = props.deltas[key]
+                    if (deltas != undefined) {
+                        store.pushMany(deltas)
+
+                    }
                 }
             }))
         }

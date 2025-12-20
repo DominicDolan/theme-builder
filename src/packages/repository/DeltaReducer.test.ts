@@ -15,8 +15,11 @@ describe("reduceDeltasAfter", () => {
         const deltas: ModelDelta<TestModel>[] = [
             {
                 modelId,
-                name,
                 timestamp: 100,
+                type: "create",
+                payload: {
+                    name
+                }
             }
         ]
 
@@ -34,16 +37,24 @@ describe("reduceDeltasAfter", () => {
             {
                 modelId,
                 timestamp: 100,
+                type: "create",
+                payload: {}
             },
             {
                 modelId,
                 timestamp: 200,
-                name: "some name"
+                type: "update",
+                payload: {
+                    name: "some name"
+                }
             },
             {
                 modelId,
                 timestamp: 300,
-                name
+                type: "update",
+                payload: {
+                    name
+                }
             },
         ]
 
@@ -62,21 +73,32 @@ describe("reduceDeltasAfter", () => {
             {
                 modelId,
                 timestamp: 100,
+                type: "create",
+                payload: {}
             },
             {
                 modelId,
                 timestamp: 200,
-                lastName
+                type: "update",
+                payload: {
+                    lastName
+                }
             },
             {
                 modelId,
                 timestamp: 300,
-                name: "initial name"
+                type: "update",
+                payload: {
+                    name: "initial name"
+                }
             },
             {
                 modelId,
                 timestamp: 300,
-                name
+                type: "update",
+                payload: {
+                    name
+                }
             },
         ]
 
@@ -98,21 +120,32 @@ describe("squashDeltasToSingle", () => {
             {
                 modelId,
                 timestamp: 100,
+                type: "create",
+                payload: {}
             },
             {
                 modelId,
                 timestamp: 200,
-                lastName
+                type: "update",
+                payload: {
+                    lastName
+                }
             },
             {
                 modelId,
                 timestamp: 300,
-                name: "initial name"
+                type: "update",
+                payload: {
+                    name: "initial name"
+                }
             },
             {
                 modelId,
                 timestamp: 300,
-                name
+                type: "update",
+                payload: {
+                    name
+                }
             },
         ]
 
@@ -121,7 +154,7 @@ describe("squashDeltasToSingle", () => {
 
         expect(delta).not.toBeNull()
         expect(delta?.modelId).toEqual(modelId)
-        expect(delta?.name).toEqual(name)
-        expect(delta?.lastName).toEqual(lastName)
+        expect(delta?.payload.name).toEqual(name)
+        expect(delta?.payload.lastName).toEqual(lastName)
     })
 })

@@ -1,12 +1,19 @@
 import {createStore, produce} from "solid-js/store"
-import {ModelDelta, ModelDeltaOptionalId} from "~/data/ModelDelta"
+import {ModelDelta, PartialModelDelta} from "~/data/ModelDelta"
 import {createEvent, createKeyedEvent, EventListener, KeyedEventListener} from "~/packages/utils/EventListener"
-import {Model} from "~/data/Model";
+import {Model, ModelData} from "~/data/Model";
+import {createId} from "@paralleldrive/cuid2";
+import {deltaArrayToGroup} from "~/packages/repository/DeltaReducer";
 
 export type DeltaStore<M extends Model> = readonly [
-    (modelId: string, ...events: Array<ModelDeltaOptionalId<M>>) => Array<ModelDelta<M>>,
+    {
+        (action: "create", deltaPayload: Partial<ModelData<M>>): ModelDelta<M>;
+        (action: "delete", modelId: string): ModelDelta<M>;
+        (modelId: string, deltaPayload: Partial<ModelData<M>>): ModelDelta<M>;
+    },
     {
         getStreamById(id: string): ModelDelta<M>[] | undefined,
+        pushMany: (deltas: ModelDelta<M>[]) => Array<ModelDelta<M>>
         onAnyDeltaPush: EventListener<[ModelDelta<M>[]]>[0]
         onAnyDeltaPushById: KeyedEventListener<[ModelDelta<M>[]]>[0]
         onCreateDeltaPush: EventListener<[ModelDelta<M>[]]>[0]
@@ -42,26 +49,72 @@ export function createDeltaStore<M extends Model>() {
     const [onCreateDeltaPush, triggerCreateDeltaPush] = createEvent<[ModelDelta<M>[]]>()
     const [onCreateDeltaPushById, triggerCreateDeltaPushById] = createKeyedEvent<[ModelDelta<M>[]]>()
 
-    function pushDelta(modelId: string, ...events: Array<ModelDeltaOptionalId<M>>): Array<ModelDelta<M>> {
+    function pushManyByModelId(modelId: string, deltas: ModelDelta<M>[]) {
+        const deltaArray = deltas.toSorted((a, b) => a.timestamp - b.timestamp)
         const stream = deltaStreams[modelId] as ModelDelta<M>[] | null
-        const eventsWithId: ModelDelta<M>[] = events
-            .map(e => ({...e, modelId, timestamp: e.timestamp ?? Date.now()} as ModelDelta<M>))
         if (stream == null) {
-            setDeltaStream(modelId, eventsWithId)
-            triggerCreateDeltaPush(eventsWithId)
-            triggerCreateDeltaPushById(modelId, eventsWithId)
+            setDeltaStream(modelId, deltaArray)
+            triggerCreateDeltaPush(deltaArray)
+            triggerCreateDeltaPushById(modelId, deltaArray)
         } else {
             setDeltaStream(modelId, produce((arr) => {
-                for (const event of eventsWithId) {
+                for (const event of deltaArray) {
                     insertValueByTimestamp(arr, event)
                 }
             }))
-            triggerUpdateDeltaPush(eventsWithId)
-            triggerUpdateDeltaPushById(modelId, eventsWithId)
         }
-        triggerAnyDeltaPush(eventsWithId)
-        triggerAnyDeltaPushById(modelId, eventsWithId)
-        return eventsWithId
+        triggerUpdateDeltaPush(deltaArray)
+        triggerUpdateDeltaPushById(modelId, deltaArray)
+        triggerAnyDeltaPush(deltaArray)
+        triggerAnyDeltaPushById(modelId, deltaArray)
+    }
+
+    function pushDeleteOrUpdate(modelId: string, deltaPayload?: Partial<ModelData<M>>) {
+        const delta: ModelDelta<M> = {
+            modelId,
+            timestamp: Date.now(),
+            type: deltaPayload == undefined ? "delete" : "update",
+            payload: deltaPayload == undefined ? {} : deltaPayload,
+        }
+
+        pushManyByModelId(modelId, [delta])
+
+        return delta
+    }
+
+    function pushCreate(deltaPayload: Partial<ModelData<M>>) {
+        const modelId = createId()
+        const delta: ModelDelta<M> = {
+            modelId,
+            timestamp: Date.now(),
+            type: "create",
+            payload: deltaPayload,
+        }
+
+        pushManyByModelId(modelId, [delta])
+
+        return delta
+    }
+
+    function pushDelta(action: "delete", modelId: string): ModelDelta<M>
+    function pushDelta(action: "create", deltaPayload: Partial<ModelData<M>>): ModelDelta<M>
+    function pushDelta(modelId: string, deltaPayload: Partial<ModelData<M>>): ModelDelta<M>
+    function pushDelta(arg1: string, arg2?: string | Partial<ModelData<M>> | ModelDelta<M>): ModelDelta<M> {
+        if (arg1 === "delete") {
+            return pushDeleteOrUpdate(arg2 as string)
+        } else if (arg1 === "create") {
+            return pushCreate(arg2 as Partial<ModelData<M>>)
+        } else {
+            return pushDeleteOrUpdate(arg1, arg2 as Partial<ModelData<M>>)
+        }
+    }
+
+    function pushManyDeltas(deltas: ModelDelta<M>[]): Array<ModelDelta<M>> {
+        const grouped = deltaArrayToGroup(deltas)
+        for (const modelId in grouped) {
+            pushManyByModelId(modelId, grouped[modelId])
+        }
+        return deltas
     }
 
     return [
@@ -70,6 +123,7 @@ export function createDeltaStore<M extends Model>() {
             getStreamById(id: string): ModelDelta<M>[] | undefined {
                 return deltaStreams?.[id]
             },
+            pushMany: pushManyDeltas,
             onAnyDeltaPush,
             onAnyDeltaPushById,
             onCreateDeltaPush,
@@ -77,5 +131,5 @@ export function createDeltaStore<M extends Model>() {
             onUpdateDeltaPush,
             onUpdateDeltaPushById,
         }
-    ] as const
+    ] as DeltaStore<M>
 }

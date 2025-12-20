@@ -1,5 +1,5 @@
 import {createDeltaModelContextStore, deltasSince} from "~/packages/contextStore/DeltaModelContextStore";
-import {ModelDelta, ModelDeltaOptionalId} from "~/data/ModelDelta";
+import {ModelDelta, PartialModelDelta} from "~/data/ModelDelta";
 import {createSignal, For, Suspense} from "solid-js";
 import {createAsync} from "@solidjs/router";
 import {keyedDebounce} from "~/packages/utils/KeyedDebounce";
@@ -21,38 +21,50 @@ export function DeltaModelContextStoreTest() {
                     {
                         modelId: "test-model-1",
                         timestamp: 100,
-                        name: "John",
-                        age: 25
+                        type: "create",
+                        payload: {
+                            name: "John",
+                            age: 25
+                        }
                     },
                     {
                         modelId: "test-model-1",
                         timestamp: 200,
-                        name: "John Doe",
-                        age: 26
+                        type: "update",
+                        payload: {
+                            name: "John",
+                            age: 26
+                        }
                     },
                 ],
                 ["test-model-2"]: [
                     {
                         modelId: "test-model-2",
                         timestamp: 150,
-                        name: "Jane",
-                        age: 25
+                        type: "create",
+                        payload: {
+                            name: "Jane",
+                            age: 25,
+                        }
                     },
                     {
                         modelId: "test-model-2",
                         timestamp: 250,
-                        name: "Jane Doe",
-                        age: 26
+                        type: "update",
+                        payload: {
+                            name: "Jane Doe",
+                            age: 26,
+                        }
                     }
                 ]
             }), 1000))
     })
 
-    const save = keyedDebounce((modelId: string, deltas: ModelDeltaOptionalId<TestModel>[]) => {
+    const save = keyedDebounce((modelId: string, deltas: PartialModelDelta<TestModel>[]) => {
         console.log("saving deltas debounced:", deltas)
     }, 1000)
 
-    function onDeltaPush(modelId: string, deltas: ModelDeltaOptionalId<TestModel>[]) {
+    function onDeltaPush(modelId: string, deltas: PartialModelDelta<TestModel>[]) {
         save(modelId, deltas)
     }
 

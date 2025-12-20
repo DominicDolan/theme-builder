@@ -2,15 +2,16 @@ import {createDeltaStore, DeltaStore} from "~/packages/repository/DeltaStore"
 import {createStore, reconcile} from "solid-js/store"
 import {reduceDeltasOntoModel, reduceDeltasToModel} from "~/packages/repository/DeltaReducer"
 import {createEvent, createKeyedEvent, EventListener, KeyedEventListener} from "~/packages/utils/EventListener"
-import {ModelDelta, ModelDeltaOptionalId} from "~/data/ModelDelta"
+import {ModelDelta} from "~/data/ModelDelta"
 import {Model, PartialModel} from "~/data/Model";
 
 export type ModelStore<M extends Model> = [
     modelsList: M[],
-    (modelId: string, ...events: Array<ModelDeltaOptionalId<M>>) => Promise<PartialModel<M>>,
+    DeltaStore<M>[0],
     {
         getModelById(id: string): M | undefined,
         getStreamById(id: string): ModelDelta<M>[] | undefined,
+        pushMany: DeltaStore<M>[1]["pushMany"]
         onModelCreate: EventListener<[PartialModel<M>]>[0]
         onModelUpdate: EventListener<[PartialModel<M>]>[0]
         onAnyDeltaPush: DeltaStore<M>[1]["onAnyDeltaPush"]
@@ -19,7 +20,7 @@ export type ModelStore<M extends Model> = [
 ]
 
 export function createModelStore<M extends Model>(initialDeltas?: Record<string, ModelDelta<M>[]>): ModelStore<M> {
-    const [pushDelta, { getStreamById, onCreateDeltaPush, onUpdateDeltaPushById, onAnyDeltaPush }] = createDeltaStore()
+    const [pushDelta, { getStreamById, pushMany, onCreateDeltaPush, onUpdateDeltaPushById, onAnyDeltaPush }] = createDeltaStore()
     const [modelsById, setModelsById] = createStore<Record<string, M>>({})
     const [modelsListStore, setModelListStore] = createStore<M[]>([])
 
@@ -42,7 +43,7 @@ export function createModelStore<M extends Model>(initialDeltas?: Record<string,
         triggerModelUpdate(modelFromEvents)
         triggerModelUpdateById(modelId, modelFromEvents)
 
-        onUpdateDeltaPushById(modelId, () => {
+        onUpdateDeltaPushById(modelId, (updates) => {
             onModelUpdatedById(modelId)
         })
     })
@@ -58,7 +59,7 @@ export function createModelStore<M extends Model>(initialDeltas?: Record<string,
 
     if (initialDeltas != null) {
         for (const key in initialDeltas) {
-            pushDelta(key, ...initialDeltas[key])
+            pushMany(initialDeltas[key])
         }
     }
 
@@ -74,32 +75,19 @@ export function createModelStore<M extends Model>(initialDeltas?: Record<string,
         triggerModelUpdateById(modelId, newModel)
     }
 
-    function pushDeltaAsync(modelId: string, ...events: Array<ModelDeltaOptionalId<M>>) {
-        return new Promise<PartialModel<M>>((resolve, reject) => {
-            onModelUpdateById(modelId, async (model) => {
-                try {
-                    resolve(model)
-                } catch (e) {
-                    reject(e)
-                }
-            }, { once: true })
-
-            pushDelta(modelId, ...events)
-        })
-    }
-
     return [
         modelsListStore,
-        pushDeltaAsync,
+        pushDelta,
         {
             getModelById(id: string): M | undefined {
                 return modelsById[id]
             },
+            pushMany,
             getStreamById,
             onModelUpdate,
             onModelUpdateById,
             onAnyDeltaPush,
             onModelCreate,
         }
-    ]
+    ] as ModelStore<M>
 }

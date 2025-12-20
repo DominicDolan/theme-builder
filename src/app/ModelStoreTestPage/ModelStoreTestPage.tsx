@@ -8,7 +8,17 @@ export function ModelStoreTestPage() {
 
     const [text, setText] = createSignal("")
 
-    const [models, push, { getStreamById }] = createModelStore<Model & { name: string, age: number }>()
+    const [models, push, { getStreamById }] = createModelStore<Model & { name: string, age: number }>({
+        [modelId]: [{
+            modelId,
+            timestamp: 0,
+            type: "create",
+            payload: {
+                name: "test",
+                age: 10
+            }
+        }]
+    })
 
     function addText() {
         push(modelId, {

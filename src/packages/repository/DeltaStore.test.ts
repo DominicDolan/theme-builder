@@ -1,17 +1,16 @@
 import {expect, test} from "vitest"
-import {defineDeltaStore} from "./DeltaStore"
-import {Model} from "./Model"
+import {createDeltaStore} from "./DeltaStore"
+import {Model} from "~/data/Model";
 
 interface TestModel extends Model {
     name: string
 }
 
-const useDeltaStore = defineDeltaStore<TestModel>()
 test("DeltaStore stores pushed delta", () => {
-    const store = useDeltaStore()
+    const store = createDeltaStore()
     const [pushDelta, { getStreamById }] = store
-    const modelId = "testId-1"
-    pushDelta(modelId, { modelId, timestamp: Date.now(), name: "test 1" })
+    const delta = pushDelta("create", { name: "test 1" })
+    const modelId = delta.modelId
 
     const deltaStream = getStreamById(modelId)
 
@@ -20,25 +19,31 @@ test("DeltaStore stores pushed delta", () => {
 })
 
 test("DeltaStore stores pushed deltas in order of timestamp", () => {
-    const store = useDeltaStore()
-    const [pushDelta, { getStreamById }] = store
+    const store = createDeltaStore<TestModel>()
+    const [pushDelta, { getStreamById, pushMany }] = store
     const modelId = "testId-1"
 
-    pushDelta(modelId, { modelId, timestamp: 200, name: "middle" })
-    pushDelta(modelId, { modelId, timestamp: 1000, name: "last" })
-    pushDelta(modelId, { modelId, timestamp: 500, name: "middle" })
-    pushDelta(modelId, { modelId, timestamp: 300, name: "middle" })
-    pushDelta(modelId, { modelId, timestamp: 400, name: "middle" })
-    pushDelta(modelId, { modelId, timestamp: 600, name: "middle" })
-    pushDelta(modelId, { modelId, timestamp: 100, name: "first" })
-    pushDelta(modelId, { modelId, timestamp: 700, name: "middle" })
+    pushMany([
+        { modelId, type: "create", timestamp: 0, payload: { name: "create"}},
+        { modelId, type: "update", timestamp: 200, payload: { name: "middle" }},
+        { modelId, type: "update", timestamp: 1000, payload: { name: "last" }},
+        { modelId, type: "update", timestamp: 500, payload: { name: "middle" }},
+        { modelId, type: "update", timestamp: 300, payload: { name: "middle" }},
+        { modelId, type: "update", timestamp: 400, payload: { name: "middle" }},
+        { modelId, type: "update", timestamp: 600, payload: { name: "middle" }},
+        { modelId, type: "update", timestamp: 100, payload: { name: "first" }},
+        { modelId, type: "update", timestamp: 700, payload: { name: "middle" }},
+    ])
 
     const deltaStream = getStreamById(modelId)
 
     const lastElement = deltaStream?.at(-1)
-    const firstElement = deltaStream?.at(0)
+    const createElement = deltaStream?.at(0)
+    const firstElement = deltaStream?.at(1)
+
     expect(lastElement?.modelId).toEqual(modelId)
     expect(firstElement?.modelId).toEqual(modelId)
-    expect(lastElement?.name).toEqual("last")
-    expect(firstElement?.name).toEqual("first")
+    expect(lastElement?.payload.name).toEqual("last")
+    expect(createElement?.payload.name).toEqual("create")
+    expect(firstElement?.payload.name).toEqual("first")
 })
