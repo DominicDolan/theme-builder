@@ -20,6 +20,7 @@
     "zod": "4.1.12"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20251218.0",
     "@unocss/preset-attributify": "66.5.0",
     "concurrently": "^9.2.1",
     "jsdom": "27.2.0",

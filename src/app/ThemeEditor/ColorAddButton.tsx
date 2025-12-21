@@ -6,7 +6,7 @@ export function ColorAddButton() {
     const [pushColorDelta] = useColorContext()
 
     function addColor() {
-        pushColorDelta(createId(), {
+        pushColorDelta("create", {
             hex: "#000000",
             alpha: 1.0,
             name: "",

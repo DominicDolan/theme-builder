@@ -9,48 +9,97 @@ import {createModelStore} from "~/packages/repository/ModelStore"
 import {keyedDebounce} from "~/packages/utils/KeyedDebounce"
 import {zodResponse} from "~/packages/utils/ZodResponse"
 import {calculateDelta} from "~/packages/repository/DeltaGenerator"
-import {squashDeltasToSingle} from "~/packages/repository/DeltaReducer"
-import {createDeltaModelContextStore} from "~/packages/contextStore/DeltaModelContextStore";
+import {deltaArrayToGroup, squashDeltasToSingle} from "~/packages/repository/DeltaReducer"
+import {createDeltaModelContextStore, deltasSince} from "~/packages/contextStore/DeltaModelContextStore";
 import {getRequestEvent} from "solid-js/web";
 import {getPlatformProxy} from "wrangler";
 import {ColorDefinition, colorDefinitionSchema} from "~/data/ColorDefinition";
+import ColorItem from "~/app/ThemeEditor/ColorItem";
+import {ColorAddButton} from "~/app/ThemeEditor/ColorAddButton";
+import {D1Database} from "@cloudflare/workers-types";
 
-async function getDB() {
+async function getDB(): Promise<D1Database> {
     const event = getRequestEvent();
     const cloudflareContext = event?.nativeEvent.context.cloudflare
     if (cloudflareContext != null) return cloudflareContext.env.DB
 
     const platformProxy = await getPlatformProxy()
 
-    return platformProxy.env.DB
+    return platformProxy.env.DB as D1Database
 }
 
-const TABLE_LIST_QUERY = "SELECT name FROM sqlite_master WHERE type='table';"
+type ColorEventRow = {
+    id: number
+    theme_id: string
+    color_id: string
+    event_type: string
+    payload: string
+    timestamp: number
+}
+
+function rowToColorDelta(row: ColorEventRow): ModelDelta<ColorDefinition> {
+    const payload = JSON.parse(row.payload ?? "{}") as ModelDelta<ColorDefinition>["payload"]
+
+    // Optional: validate/normalize event_type defensively
+    if (row.event_type !== "create" && row.event_type !== "update" && row.event_type !== "delete") {
+        throw new Error(`Unexpected event_type: ${row.event_type}`)
+    }
+
+    return {
+        modelId: row.color_id,
+        timestamp: Number(row.timestamp),
+        type: row.event_type,
+        payload,
+    }
+}
+
+
+const COLOR_EVENTS_QUERY = "SELECT * FROM color_events WHERE theme_id = ? ORDER BY timestamp ASC;"
 
 const colorQuery = query(async () => {
     "use server"
 
     const db = await getDB()
-    const {results} = await db.prepare(TABLE_LIST_QUERY).all()
 
-    return results.map(row => row.name)
+    const {results} = await db.prepare(COLOR_EVENTS_QUERY)
+        .bind("1") // theme_id (hardcoded to 1 as requested)
+        .all<ColorEventRow>()
+
+    const definitions = results.map(rowToColorDelta)
+    return deltaArrayToGroup(definitions)
 }, "get-colors")
 
 export const updateColors = action(async (delta: ModelDelta<ColorDefinition>) => {
     "use server"
+    const existingDeltas: Record<string, ModelDelta<ColorDefinition>[]> = {}
+    const [_, push] = createModelStore(existingDeltas)
 
-    const deltas = []
-    const [_, push] = createModelStore(deltas)
-
-    const model = await push(delta.modelId, delta)
+    const model = push(delta.modelId, delta.payload)
 
     const result = await colorDefinitionSchema.spa(model)
 
     if (result.success) {
         const resultDelta = calculateDelta(model, result.data)
         const deltaToSave = resultDelta == null ? delta : squashDeltasToSingle([delta, resultDelta])
-        await Promise.resolve()//db.saveColorDelta(deltaToSave)
+
+        if (deltaToSave) {
+            const db = await getDB()
+            try {
+                await db.prepare(
+                    "INSERT INTO color_events (theme_id, color_id, event_type, payload, timestamp) VALUES (?, ?, ?, ?, ?)"
+                ).bind(
+                    "1", // theme_id (hardcoded to 1 as requested)
+                    deltaToSave.modelId,
+                    deltaToSave.type,
+                    JSON.stringify(deltaToSave.payload),
+                    deltaToSave.timestamp || Date.now()
+                ).run()
+            } catch (e) {
+                console.error("Error saving color delta:", e)
+            }
+        }
     }
+
     return zodResponse(result, { revalidate: [] })
 })
 
@@ -69,6 +118,8 @@ export default function ThemeEditor() {
     const save = keyedDebounce(async (_: string, deltas: ModelDelta<ColorDefinition>[]) => {
         const mergedDeltas = squashDeltasToSingle(deltas)
 
+        if (mergedDeltas == null) return
+
         colorsSubmission.clear()
         await saveAction(mergedDeltas)
 
@@ -85,19 +136,16 @@ export default function ThemeEditor() {
         <h2>TE</h2>
         <div flex={"col gap-4"}>
             <Suspense fallback={<div style={"min-height: 20rem; min-width: 20rem; background-color: red"}>Loading...</div>}>
-                <div>
-                    Output: {String(colorDeltas())}
-                </div>
-                {/*<ColorProvider deltas={colorDeltas()} onDeltaPush={deltasSince(latestTimestamp(), onColorDeltaPush)}>*/}
-                {/*    {(colorModels) => <div>*/}
-                {/*        <For each={colorModels}>*/}
-                {/*            {(def) => {*/}
-                {/*                return <ColorItem definition={def}/>*/}
-                {/*            }}*/}
-                {/*        </For>*/}
-                {/*        <ColorAddButton/>*/}
-                {/*    </div>}*/}
-                {/*</ColorProvider>*/}
+                <ColorProvider deltas={colorDeltas()} onDeltaPush={deltasSince(latestTimestamp(), onColorDeltaPush)}>
+                    {(colorModels) => <div>
+                        <For each={colorModels}>
+                            {(def) => {
+                                return <ColorItem definition={def}/>
+                            }}
+                        </For>
+                        <ColorAddButton/>
+                    </div>}
+                </ColorProvider>
             </Suspense>
             <button onClick={() => revalidate(colorQuery.key)}>Revalidate</button>
         </div>

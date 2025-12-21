@@ -10,10 +10,10 @@
     "allowJs": true,
     "strict": true,
     "noEmit": true,
-    "types": ["vinxi/types/client", "vitest/globals", "@testing-library/jest-dom"],
+    "types": ["vinxi/types/client", "vitest/globals", "@testing-library/jest-dom", "@cloudflare/workers-types"],
     "isolatedModules": true,
     "paths": {
       "~/*": ["./src/*"]
-    }
+    },
   }
 }

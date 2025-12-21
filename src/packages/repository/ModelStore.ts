@@ -3,11 +3,15 @@ import {createStore, reconcile} from "solid-js/store"
 import {reduceDeltasOntoModel, reduceDeltasToModel} from "~/packages/repository/DeltaReducer"
 import {createEvent, createKeyedEvent, EventListener, KeyedEventListener} from "~/packages/utils/EventListener"
 import {ModelDelta} from "~/data/ModelDelta"
-import {Model, PartialModel} from "~/data/Model";
+import {Model, ModelData, PartialModel} from "~/data/Model";
 
 export type ModelStore<M extends Model> = [
     modelsList: M[],
-    DeltaStore<M>[0],
+    {
+        (action: "create", deltaPayload: Partial<ModelData<M>>): M;
+        (action: "delete", modelId: string): M;
+        (modelId: string, deltaPayload: Partial<ModelData<M>>): M;
+    },
     {
         getModelById(id: string): M | undefined,
         getStreamById(id: string): ModelDelta<M>[] | undefined,
@@ -75,9 +79,17 @@ export function createModelStore<M extends Model>(initialDeltas?: Record<string,
         triggerModelUpdateById(modelId, newModel)
     }
 
+    function pushDeltaAndGetModel(action: "delete", modelId: string): M
+    function pushDeltaAndGetModel(action: "create", deltaPayload: Partial<ModelData<M>>): M
+    function pushDeltaAndGetModel(modelId: string, deltaPayload: Partial<ModelData<M>>): M
+    function pushDeltaAndGetModel(arg1: string, arg2?: string | Partial<ModelData<M>> | ModelDelta<M>): M {
+        const delta = pushDelta(arg1, arg2 as string | Partial<ModelData<M>> | ModelDelta<M>)
+        return modelsById[delta.modelId]
+    }
+
     return [
         modelsListStore,
-        pushDelta,
+        pushDeltaAndGetModel,
         {
             getModelById(id: string): M | undefined {
                 return modelsById[id]

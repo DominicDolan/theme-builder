@@ -117,4 +117,23 @@ describe("ReadModelStore deltaStore reading", () => {
         expect(readModels?.[0].age).toEqual(age)
 
     })
+
+    test("Pushing to the model store returns the updated model", async () => {
+        const store = createModelStore<TestModel>()
+        const [_, push, { pushMany }] = store
+
+        const modelId = "someId"
+        const name = "some name"
+
+        pushMany([{
+            modelId,
+            timestamp: 100,
+            type: "create",
+            payload: {}
+        }])
+
+        const newModel = push(modelId, { name })
+
+        expect(newModel.name).toEqual(name)
+    })
 })
