@@ -14,21 +14,9 @@ type IndexDef = {
     unique?: boolean
 }
 
-export type DefaultRows = "model_id" | "payload" | "event_type" | "timestamp" | "group_by_id"
-export type SqlSchemaMapping = { [key in DefaultRows]: string }
 export type ModelSqlSchemaOptions = {
     recreate?: boolean
-    mappings?: Partial<SqlSchemaMapping>
 }
-
-const defaultMappings: SqlSchemaMapping = {
-    model_id: "modelId",
-    payload: "payload",
-    event_type: "type",
-    timestamp: "timestamp",
-    group_by_id: "groupById"
-}
-
 
 /**
  * A light-weight builder for D1/SQLite CREATE TABLE statements.
@@ -88,7 +76,6 @@ export function createModelSchema<T extends Model>(
             return {
                 tableName,
                 payloadSchema,
-                mappings: { ...defaultMappings, ...options?.mappings } as Record<DefaultRows, string>,
                 generateSqlSchema() {
                     const fkClauses = foreignKeys.map((fk) => {
                         const [refTable, refColWithParens] = fk.references.split("(")
@@ -112,10 +99,20 @@ export function createModelSchema<T extends Model>(
 
                     return [dropTable + createTable, ...createIndexes].join("\n")
                 },
-                deltaReadSql(whereClause?: string, orderByClause?: string) {
-                    const where = whereClause ? ` WHERE ${whereClause}` : ""
-                    const orderBy = orderByClause ? ` ORDER BY ${orderByClause}` : ""
-                    return `SELECT * FROM "${tableName}"${where}${orderBy};`
+                generateSelectGroupSql() {
+                    return `SELECT * FROM "${tableName}" WHERE group_by_id = ? ORDER BY timestamp ASC;`
+                },
+                generateSelectSingleSql() {
+                    return `SELECT * FROM "${tableName}" WHERE model_id = ? ORDER BY timestamp ASC;`
+                },
+                generateInsertSingle() {
+                    return `INSERT INTO "${tableName}" (group_by_id, model_id, event_type, payload, timestamp) VALUES (?, ?, ?, ?, ?)`
+                },
+                generateInsert(valueCount: number = 1) {
+                    const columns = ["group_by_id", "model_id", "event_type", "payload", "timestamp"]
+                    const valueSet = `(${Array(columns.length).fill("?").join(", ")})`
+                    const values = Array(valueCount).fill(valueSet).join(", ")
+                    return `INSERT INTO "${tableName}" (${columns.join(", ")}) VALUES ${values}`
                 }
             }
         },

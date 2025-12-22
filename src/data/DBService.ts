@@ -34,21 +34,15 @@ function convertEventRowToModelDelta<M extends Model>(row: ModelEventRow): Model
     }
 }
 
-export type ModelSqlQueries<M extends Model> = {
-    getMany: (table: string) => string
-    getOne: (table: string, id: string) => string
-    insert: (table: string, delta: ModelDelta<M>) => string
-}
-
-export function createDBService<M extends Model >(sqlSchema: ModelSchema<M>, queries: ModelSqlQueries<M>) {
+export function useDatabaseForModel<M extends Model >(sqlSchema: ModelSchema<M>) {
 
     return {
-        getMany: async () => {
+        getManyByGroup: async (groupBy: string) => {
             const db = await getDB()
 
-            const sql = queries.getMany(sqlSchema.tableName)
+            const sql = sqlSchema.generateSelectGroupSql()
             const {results} = await db.prepare(sql)
-                .bind("1") // theme_id (hardcoded to 1 as requested)
+                .bind(groupBy)
                 .all<ModelEventRow>()
 
             return results.map(convertEventRowToModelDelta)
@@ -56,13 +50,43 @@ export function createDBService<M extends Model >(sqlSchema: ModelSchema<M>, que
         getOne: async (id: string) => {
             const db = await getDB()
 
-            const sql = queries.getOne(sqlSchema.tableName, id)
-            const {results} = await db.prepare(sql).all<ModelEventRow>()
+            const sql = sqlSchema.generateSelectSingleSql()
+            const {results} = await db.prepare(sql).bind(id).all<ModelEventRow>()
 
-            return results.map(convertEventRowToModelDelta)[0]
+            return results.map(convertEventRowToModelDelta)
         },
-        insert: async (delta: ModelDelta<M>) => {
+        insert: async (delta: ModelDelta<M>, group: string) => {
+            const db = await getDB()
 
+            const sql = sqlSchema.generateInsertSingle()
+
+            await db.prepare(sql).bind(
+                group, // theme_id (hardcoded to 1 as requested)
+                delta.modelId,
+                delta.type,
+                JSON.stringify(delta.payload),
+                delta.timestamp || Date.now()
+            ).run()
+        },
+        insertMany: async (deltas: ModelDelta<M>[], group: string) => {
+            const db = await getDB()
+
+            const sql = sqlSchema.generateInsert(deltas.length)
+
+            const bindables = deltas.flatMap(delta => [
+                group,
+                delta.modelId,
+                delta.type,
+                JSON.stringify(delta.payload),
+                delta.timestamp || Date.now()
+            ])
+
+            await db.prepare(sql).bind(...bindables).run()
+        },
+        dbPrepare: async (sql: string | ((tableName: string) => string)) => {
+            const db = await getDB()
+            sql = typeof sql === "string" ? sql : sql(sqlSchema.tableName)
+            return db.prepare(sql)
         }
     }
 }
