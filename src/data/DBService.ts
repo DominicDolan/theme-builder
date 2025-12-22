@@ -1,20 +1,20 @@
 import {Model, ModelData} from "~/data/Model";
 import {ModelSchema} from "~/data/ModelSchemaBuilder";
 import {getRequestEvent} from "solid-js/web";
-import {getPlatformProxy} from "wrangler";
 import {ModelDelta} from "~/data/ModelDelta";
 
 async function getDB(): Promise<D1Database> {
     const event = getRequestEvent();
     const cloudflareContext = event?.nativeEvent.context.cloudflare
-    if (cloudflareContext != null) return cloudflareContext.env.DB
+    // if (cloudflareContext != null)
+        return cloudflareContext.env.DB
 
-    const platformProxy = await getPlatformProxy()
-
-    if (platformProxy.env.DB == null) {
-        throw new Error("DB not found in env. Tried Cloudflare context and Wrangler platform proxy.")
-    }
-    return platformProxy.env.DB as D1Database
+    // const platformProxy = await getPlatformProxy()
+    //
+    // if (platformProxy.env.DB == null) {
+    //     throw new Error("DB not found in env. Tried Cloudflare context and Wrangler platform proxy.")
+    // }
+    // return platformProxy.env.DB as D1Database
 }
 
 type ModelEventRow = {
