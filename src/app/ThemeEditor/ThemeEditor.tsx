@@ -17,6 +17,7 @@ import {ColorDefinition, colorDefinitionSchema} from "~/data/ColorDefinition";
 import ColorItem from "~/app/ThemeEditor/ColorItem";
 import {ColorAddButton} from "~/app/ThemeEditor/ColorAddButton";
 import {D1Database} from "@cloudflare/workers-types";
+import colorDefinitionSql from "~/schema/ColorDefinitionSql";
 
 async function getDB(): Promise<D1Database> {
     const event = getRequestEvent();
@@ -25,6 +26,9 @@ async function getDB(): Promise<D1Database> {
 
     const platformProxy = await getPlatformProxy()
 
+    if (platformProxy.env.DB == null) {
+        throw new Error("DB not found in env. Tried Cloudflare context and Wrangler platform proxy.")
+    }
     return platformProxy.env.DB as D1Database
 }
 
@@ -54,14 +58,13 @@ function rowToColorDelta(row: ColorEventRow): ModelDelta<ColorDefinition> {
 }
 
 
-const COLOR_EVENTS_QUERY = "SELECT * FROM color_events WHERE theme_id = ? ORDER BY timestamp ASC;"
-
 const colorQuery = query(async () => {
     "use server"
 
     const db = await getDB()
 
-    const {results} = await db.prepare(COLOR_EVENTS_QUERY)
+    const sql = colorDefinitionSql.deltaReadSql("theme_id = ?", "timestamp ASC")
+    const {results} = await db.prepare(sql)
         .bind("1") // theme_id (hardcoded to 1 as requested)
         .all<ColorEventRow>()
 

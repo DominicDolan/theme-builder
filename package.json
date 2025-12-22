@@ -5,6 +5,7 @@
     "dev": "concurrently \"npm run dev:vite\" \"npm run dev:wrangler\"",
     "dev:vite": "vinxi dev --port 3001",
     "dev:wrangler": "wrangler dev --port 8788",
+    "build:schema": "tsx ./scripts/generateSchema.ts && npx wrangler d1 migrations apply DB --local",
     "build": "vinxi build",
     "start": "vinxi start",
     "test": "vitest"
@@ -25,6 +26,7 @@
     "concurrently": "^9.2.1",
     "jsdom": "27.2.0",
     "sass-embedded": "1.91.0",
+    "tsx": "^4.21.0",
     "vitest": "3.2.4",
     "wrangler": "^4.55.0"
   },

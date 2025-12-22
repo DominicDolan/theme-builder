@@ -3,6 +3,7 @@ import {ModelDelta, PartialModelDelta} from "~/data/ModelDelta";
 import {z} from "zod";
 
 export const colorDefinitionSchema = modelSchema.extend({
+    themeId: z.string(),
     hex: z.string(),
     alpha: z.number(),
     name: z.string().regex(/^--/)
