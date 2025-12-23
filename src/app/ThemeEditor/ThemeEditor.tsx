@@ -3,7 +3,7 @@ import {
     For,
     Suspense
 } from "solid-js"
-import {action, createAsync, query, revalidate, useAction, useSubmission} from "@solidjs/router"
+import {action, createAsync, json, query, revalidate, useAction, useSubmission} from "@solidjs/router"
 import {ModelDelta} from "~/data/ModelDelta"
 import {createModelStore} from "~/packages/repository/ModelStore"
 import {keyedDebounce} from "~/packages/utils/KeyedDebounce"
@@ -46,6 +46,11 @@ export const updateColors = action(async (delta: ModelDelta<ColorDefinition>) =>
                 await db.insert(deltaToSave, "1")
             } catch (e) {
                 console.error("Error saving color delta:", e)
+                return json({
+                    success: false,
+                    error: e,
+                    updatedAt: undefined
+                }, { revalidate: [] })
             }
         }
     }
@@ -100,6 +105,9 @@ export default function ThemeEditor() {
                     </div>}
                 </ColorProvider>
             </Suspense>
+            <div>
+                Error: {JSON.stringify(colorsSubmission.result)}
+            </div>
         </div>
     </div>
 }
