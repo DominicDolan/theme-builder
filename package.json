@@ -5,7 +5,9 @@
     "dev": "concurrently \"npm run dev:vite\" \"npm run dev:wrangler\"",
     "dev:vite": "vinxi dev --port 3001",
     "dev:wrangler": "wrangler dev --port 8788",
-    "build:schema": "tsx ./scripts/generateSchema.ts && npx wrangler d1 migrations apply DB --local",
+    "migrate:local": "npx wrangler d1 migrations apply DB --local",
+    "migrate:prod": "tsx ./scripts/generateSchema.ts && npx wrangler d1 migrations apply DB --remote",
+    "build:schema": "tsx ./scripts/generateSchema.ts && npm run migrate:local",
     "build": "vinxi build",
     "start": "vinxi start",
     "test": "vitest"

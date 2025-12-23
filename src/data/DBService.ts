@@ -6,15 +6,18 @@ import {ModelDelta} from "~/data/ModelDelta";
 async function getDB(): Promise<D1Database> {
     const event = getRequestEvent();
     const cloudflareContext = event?.nativeEvent.context.cloudflare
-    // if (cloudflareContext != null)
+    if (cloudflareContext != null) {
         return cloudflareContext.env.DB
+    }
 
-    // const platformProxy = await getPlatformProxy()
-    //
-    // if (platformProxy.env.DB == null) {
-    //     throw new Error("DB not found in env. Tried Cloudflare context and Wrangler platform proxy.")
-    // }
-    // return platformProxy.env.DB as D1Database
+    const wrangler = await import("wrangler")
+
+    const platformProxy = await wrangler.getPlatformProxy()
+
+    if (platformProxy.env.DB == null) {
+        throw new Error("DB not found in env. Tried Cloudflare context and Wrangler platform proxy.")
+    }
+    return platformProxy.env.DB as D1Database
 }
 
 type ModelEventRow = {
