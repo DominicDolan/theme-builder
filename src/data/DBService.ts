@@ -2,12 +2,17 @@ import {Model, ModelData} from "~/data/Model";
 import {ModelSchema} from "~/data/ModelSchemaBuilder";
 import {getRequestEvent} from "solid-js/web";
 import {ModelDelta} from "~/data/ModelDelta";
+import {isDevelopment} from "~/packages/utils/Environment";
 
 async function getDB(): Promise<D1Database> {
     const event = getRequestEvent();
     const cloudflareContext = event?.nativeEvent.context.cloudflare
     if (cloudflareContext != null) {
         return cloudflareContext.env.DB
+    }
+
+    if (!isDevelopment()){
+        throw new Error("DB not found in Cloudflare context (and Wrangler platform proxy is dev-only).")
     }
 
     const wrangler = await import("wrangler")
