@@ -1,0 +1,39 @@
+
+
+@layer base {
+    nav, article, aside, main, .card {
+        border-radius: 1rem;
+        background-repeat: no-repeat;
+        padding: 1rem;
+    }
+}
+
+@layer elements {
+    nav, article, aside, main, .card {
+        --current-color: var(--active-color, var(--primary-color));
+        --on-current-color: var(--on-active-color, var(--on-primary-color));
+
+        &, &.flat, &.elevated {
+            background-color: var(--surface-color);
+            color: var(--on-surface-color);
+        }
+
+        &, &.elevated {
+            box-shadow:
+                    0 8px 12px -1px var(--shadow-color),
+                    0 4px 6px -1px var(--shadow-color);
+        }
+
+        & &, &.outlined {
+            border: 1px solid color-mix(in oklab, var(--current-color) 50%, transparent);
+            box-shadow: none;
+        }
+
+        &.tonal {
+            border: 1px solid color-mix(in oklab, var(--current-color) 50%, transparent);
+            background-color: color-mix(in oklab, var(--current-color) 20%, transparent);
+            color: var(--current-color);
+            box-shadow: none;
+        }
+    }
+}

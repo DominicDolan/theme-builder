@@ -1,7 +1,7 @@
 import styles from "./app.module.css"
 import {A, Route, Router} from "@solidjs/router";
 import "virtual:uno.css"
-import "./style/theme/glass/theme.scss"
+import "./style/theme/minimal/theme.css"
 import ExportConfig from "~/app/ImportConfig/ExportConfig"
 import Home from "~/app/Home/Home"
 import ContactUs from "~/app/ContactUs/ContactUs"
@@ -43,7 +43,7 @@ export default function App() {
                             </span>
                         </A>
                     </nav>
-                    <main class={"filled"}
+                    <main class={"elevated"}
                           grid-row={"start-2 span-2"}
                           grid-col={"start-1"}
                           sizing={"h-full min-w-200 max-w-400 w-70%"}

@@ -49,7 +49,7 @@ export const updateColors = action(async (delta: ModelDelta<ColorDefinition>) =>
                 return json({
                     success: false,
                     error: e,
-                    updatedAt: undefined
+                    updatedAt: existingDeltas.at(-1)?.timestamp ?? 0
                 }, { revalidate: [] })
             }
         }

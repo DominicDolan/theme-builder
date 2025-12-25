@@ -23,12 +23,14 @@ export default function ExportConfig() {
             Stylesheet config
         </h2>
 
-        <form class={"filled"} action={"api/export"} method={"post"}>
-            <div class={"formField"} flex={"col gap-2"} spacing={"my-8"} sizing={"w-50%"}>
-                <label for={"location"}>Stylesheet File Name</label>
-                <input type={"text"} name={"location"} id={"location"} spacing={"pa-2"} required {...fileLocationProps}/>
-            </div>
-            <button>Save</button>
-        </form>
+        <article>
+            <form class={"filled"} action={"api/export"} method={"post"}>
+                <div class={"formField"} flex={"col gap-2"} spacing={"my-8"} sizing={"w-50%"}>
+                    <label for={"location"}>Stylesheet File Name</label>
+                    <input type={"text"} name={"location"} id={"location"} spacing={"pa-2"} required {...fileLocationProps}/>
+                </div>
+                <button class={"elevated"}>Save</button>
+            </form>
+        </article>
     </div>
 }

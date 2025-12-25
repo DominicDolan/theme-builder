@@ -1,0 +1,46 @@
+@import "../reset.css";
+@import "button.css";
+@import "text.css";
+@import "card.css";
+
+@layer defaults {
+
+    .minimalTheme.light {
+        --primary-color: #202020;
+        --on-primary-color: white;
+
+        --secondary-color: #3d3846;
+        --on-secondary-color: white;
+
+        --surface-color: #f6f5f4;
+        --on-surface-color: var(--primary-color);
+
+        --background-color: #d9d7d2;
+        --on-background: black;
+
+        --success-color: #26a269;
+        --warning-color: #f5c211;
+        --error-color: #c01c28;
+
+        --shadow-color: oklab(from black l a b / 0.3);
+
+        color-scheme: light;
+    }
+
+
+    .primary {
+        --active-color: var(--primary-color);
+        --on-active-color: var(--on-primary-color);
+    }
+
+    .secondary {
+        --active-color: var(--secondary-color);
+        --on-active-color: var(--on-secondary-color);
+    }
+
+    html {
+        background: var(--background-color);
+        background-size: cover;
+    }
+
+}
